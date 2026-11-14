@@ -1,10 +1,10 @@
-# Music API Gateway
+# Gateway
 
-The API Gateway service acts as the single entry point for clients (Flutter mobile app, Web frontend, etc.) connecting to the backend microservices ecosystem of the Personal Music App.
+The API Gateway service acts as the single entry point for clients (Flutter mobile app, Web frontend, etc.) connecting to the backend microservices ecosystem.
 
 ## 1. Primary Responsibilities
 
-- **Reverse Proxy & Routing:** Receives incoming client requests and routes them to the appropriate downstream microservices (`music-user-service`, `music-catalog-service`, `music-library-service`, `music-listening-event-service`, `music-audio-service`).
+- **Reverse Proxy & Routing:** Receives incoming client requests and routes them to the appropriate downstream microservices (`user`).
 - **Centralized & Stateless Token Authentication:**
   - JWT tokens encode `user_id`, `email`, and a `user_roles` array (e.g., `["user"]` or `["admin"]`).
   - The API Gateway validates and decodes the token **statelessly without querying a database or calling the user-service** on every request.
@@ -22,7 +22,7 @@ The API Gateway service acts as the single entry point for clients (Flutter mobi
 ## 2. Directory Structure
 
 ```text
-music-api-gateway/
+gateway/
 ├── cmd/
 │   └── main.go                  # Standalone gateway entry point
 ├── config/
@@ -90,7 +90,7 @@ music-api-gateway/
 
 ## 4. Running the Gateway
 
-From the `music-api-gateway` directory:
+From the `gateway` directory:
 
 ```bash
 # Download dependencies if needed

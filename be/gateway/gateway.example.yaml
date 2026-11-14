@@ -1,5 +1,5 @@
 app:
-  name: "music-api-gateway"
+  name: "gateway"
   version: "v1.0.0"
 
 http_server:
@@ -38,17 +38,17 @@ permissions:
 
 gateway:
   routes:
-    # Public Auth routes (login, register, refresh) -> Forwarded to music-user-service
+    # Public Auth routes (login, register, refresh) -> Forwarded to user
     - prefix: "/api/v1/auth"
       target: "http://localhost:8080"
       auth_required: false
 
-    # User Profile & Management (Protected) -> Forwarded to music-user-service
+    # User Profile & Management (Protected) -> Forwarded to user
     - prefix: "/api/v1/users"
       target: "http://localhost:8080"
       auth_required: true
 
-    # Uploads (Protected) -> Forwarded to music-user-service
+    # Uploads (Protected) -> Forwarded to user
     - prefix: "/api/v1/upload"
       target: "http://localhost:8080"
       auth_required: true

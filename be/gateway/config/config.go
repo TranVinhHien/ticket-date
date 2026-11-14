@@ -93,8 +93,8 @@ func ResolveConfigFile(customPath string) string {
 		fmt.Sprintf("./gateway.%s.yaml", appEnv),
 		"./gateway.yaml",
 		"/etc/gateway/gateway.yaml",
-		fmt.Sprintf("./music-api-gateway/config/gateway.%s.yaml", appEnv),
-		"./music-api-gateway/config/gateway.yaml",
+		fmt.Sprintf("./gateway/config/gateway.%s.yaml", appEnv),
+		"./gateway/config/gateway.yaml",
 		fmt.Sprintf("../config/gateway.%s.yaml", appEnv),
 		"../config/gateway.yaml",
 	}
@@ -117,7 +117,7 @@ func LoadConfig(path string) (*Config, error) {
 	v.AutomaticEnv()
 
 	// Default values
-	v.SetDefault("app.name", "music-api-gateway")
+	v.SetDefault("app.name", "gateway")
 	v.SetDefault("app.version", "v1.0.0")
 	v.SetDefault("http_server.host", "0.0.0.0")
 	v.SetDefault("http_server.port", 8000)

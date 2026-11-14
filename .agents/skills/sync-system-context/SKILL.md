@@ -34,8 +34,8 @@ Identify which documentation files MUST be updated according to the change type:
 | **Database Schema** | `<service>/docs/data-model.md` | Table schemas, foreign keys, indexes, migration status |
 | **API Endpoints** | `<service>/docs/api-contracts.md`, Gateway `permissions.json` | Method, path, headers required, request/response payload |
 | **Service Status / Stack** | `<service>/AGENTS.md` & `docs/architecture.md` | Active ports, stack (Go/NestJS), implementation status |
-| **Gateway Routing** | `music-api-gateway/docs/api-contracts.md` | Reverse proxy routes, RBAC matrix |
-| **Shared Envelopes** | `music-common/docs/README.md` | Changes in response structures, shared constants |
+| **Gateway Routing** | `gateway/docs/api-contracts.md` | Reverse proxy routes, RBAC matrix |
+| **Shared Envelopes** | `common/docs/README.md` | Changes in response structures, shared constants |
 | **Major Decision** | `docs/adrs/NNNN-<topic>.md` | Log Architecture Decision Records for significant changes |
 
 ### Step 3: Documentation Quality Standards (Prevent Context Bloat)

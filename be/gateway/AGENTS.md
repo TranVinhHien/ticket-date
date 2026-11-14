@@ -1,9 +1,9 @@
 ---
 trigger: model_decision
-description: "Guidelines, architecture boundaries, routing rules, and testing standards for the music-api-gateway service."
+description: "Guidelines, architecture boundaries, routing rules, and testing standards for the gateway service."
 ---
 
-# Agent Guidelines - Music API Gateway
+# Agent Guidelines - Gateway
 
 ## 1. Service Responsibility
 
@@ -16,20 +16,19 @@ description: "Guidelines, architecture boundaries, routing rules, and testing st
 
 ### What it does NOT do (Out of Scope)
 - **No Database Persistence**: Must never connect directly to PostgreSQL, CockroachDB, MySQL, or Redis. The gateway is 100% stateless.
-- **No User/Business Logic**: Does not handle user registration, credential verification, password hashing, or token issuance (delegated to `music-user-service`).
-- **No Direct Media Processing**: Does not stream raw audio chunks or handle file uploads directly (proxies directly to `music-audio-service`).
+- **No User/Business Logic**: Does not handle user registration, credential verification, password hashing, or token issuance (delegated to `user`).
 - **No Message Broker Integration**: Does not publish or consume events from Kafka or RabbitMQ.
 
 ---
 
 ## 2. Required Context
 
-Before making modifications in `music-api-gateway`, review:
+Before making modifications in `gateway`, review:
 - @[Global Architecture](../docs/architecture.md): Service boundaries and network placement.
 - @[Service Communication](../docs/service-communication.md): Downstream routes and forwarded header specifications.
 - @[Gateway Architecture](docs/architecture.md): Internal proxy mechanics, middleware chains, and route configurations.
-- @music-api-gateway/gateway.example.yaml: Downstream route mapping schema (`prefix`, `target`, `auth_required`).
-- @music-api-gateway/permissions.json: RBAC permission matrix for endpoints and HTTP methods.
+- @gateway/gateway.example.yaml: Downstream route mapping schema (`prefix`, `target`, `auth_required`).
+- @gateway/permissions.json: RBAC permission matrix for endpoints and HTTP methods.
 
 ---
 
@@ -37,7 +36,7 @@ Before making modifications in `music-api-gateway`, review:
 
 ### Package Layout
 ```
-music-api-gateway/
+gateway/
 ├── cmd/
 │   └── main.go           # CLI bootstrap, parses config and launches gateway server
 ├── config/
@@ -74,12 +73,9 @@ music-api-gateway/
 
 - **Database**: NONE. No database drivers allowed.
 - **Downstream Services**: Communicates over HTTP via reverse proxy to:
-  - `music-user-service`: `/api/v1/auth/**`, `/api/v1/users/**`
-  - `music-catalog-service`: `/api/v1/catalog/**`, `/api/v1/tracks/**`
-  - `music-library-service`: `/api/v1/library/**`, `/api/v1/playlists/**`
-  - `music-audio-service`: `/api/v1/audio/**`
+  - `user`: `/api/v1/auth/**`, `/api/v1/users/**`
 - **Message Broker**: NONE.
-- **Shared Module (`music-common`)**:
+- **Shared Module (`common`)**:
   - Uses `constants` for canonical header names (`HeaderUserID`, `HeaderUserRoles`, `HeaderAuthorization`).
   - Standard error codes and response envelopes.
 
@@ -108,5 +104,5 @@ Specific test suites to run:
 
 ### Documentation Requirements
 Update documentation whenever making functional changes:
-- If adding/updating routes or downstream targets: update @music-api-gateway/docs/architecture.md and @music-api-gateway/gateway.example.yaml.
-- If modifying RBAC roles or endpoint permissions: update @music-api-gateway/permissions.json.
+- If adding/updating routes or downstream targets: update @gateway/docs/architecture.md and @gateway/gateway.example.yaml.
+- If modifying RBAC roles or endpoint permissions: update @gateway/permissions.json.

@@ -5,14 +5,14 @@ import (
 	"fmt"
 	"log"
 
-	_ "github.com/TranVinhHien/music-core-app/music-core-backend/music-core-user/docs"
-	"github.com/TranVinhHien/music-core-app/music-core-backend/music-core-user/internal/config"
-	"github.com/TranVinhHien/music-core-app/music-core-backend/music-core-user/internal/database"
-	"github.com/TranVinhHien/music-core-app/music-core-backend/music-core-user/internal/database/migrations"
-	"github.com/TranVinhHien/music-core-app/music-core-backend/music-core-user/internal/handlers"
-	"github.com/TranVinhHien/music-core-app/music-core-backend/music-core-user/internal/repository"
-	"github.com/TranVinhHien/music-core-app/music-core-backend/music-core-user/internal/router"
-	"github.com/TranVinhHien/music-core-app/music-core-backend/music-core-user/internal/services"
+	_ "github.com/TranVinhHien/ticket-date/be/user/docs"
+	"github.com/TranVinhHien/ticket-date/be/user/internal/config"
+	"github.com/TranVinhHien/ticket-date/be/user/internal/database"
+	"github.com/TranVinhHien/ticket-date/be/user/internal/database/migrations"
+	"github.com/TranVinhHien/ticket-date/be/user/internal/handlers"
+	"github.com/TranVinhHien/ticket-date/be/user/internal/repository"
+	"github.com/TranVinhHien/ticket-date/be/user/internal/router"
+	"github.com/TranVinhHien/ticket-date/be/user/internal/services"
 )
 
 var confPath = flag.String("config", "", "Path to user service config yaml file")
@@ -42,7 +42,6 @@ func main() {
 		log.Fatalf("Invalid configuration: %v", err)
 	}
 	config.App = *conf
-
 
 	// Connect to database
 	database.Connect()

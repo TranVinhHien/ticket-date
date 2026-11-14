@@ -1,4 +1,4 @@
-# Music User Service
+# User Service
 
 - **Runtime / Framework:** NestJS + PostgreSQL
 - **Primary Responsibilities:**

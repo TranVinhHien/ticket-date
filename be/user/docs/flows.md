@@ -1,4 +1,4 @@
-# Music User Service - Business Flows
+# User Service - Business Flows
 
 ---
 

@@ -5,7 +5,7 @@ import (
 	"github.com/TranVinhHien/ticket-date/be/common/response"
 )
 
-// Response aliases the standard response envelope from music-common.
+// Response aliases the standard response envelope from common.
 type Response = response.AnyResponse
 
 // BaseListDto is the response data shape for endpoints that return a list.
@@ -16,5 +16,5 @@ type BaseListDto struct {
 	List  any   `json:"list"`
 }
 
-// BaseQuery aliases the standard pagination query from music-common.
+// BaseQuery aliases the standard pagination query from common.
 type BaseQuery = pagination.PaginationQuery

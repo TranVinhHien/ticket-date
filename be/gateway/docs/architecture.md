@@ -1,4 +1,4 @@
-# Internal Architecture - Music API Gateway
+# Internal Architecture - Gateway
 
 > **Update Notice**: Update this file when changing routing mechanisms (proxy), middleware pipelines, or API Gateway configuration structures.
 
@@ -6,7 +6,7 @@
 
 ## 1. Directory Structure
 ```
-music-api-gateway/
+gateway/
 ├── cmd/                # Gateway bootstrap and entry point
 ├── config/             # Parse and load gateway.*.yaml
 ├── middlewares/        # Auth, CORS, Logger, Rate-limit, Recovery
@@ -39,8 +39,5 @@ music-api-gateway/
 ## 3. Routes & Downstream Services Configuration (Summary)
 - Configured in `gateway.*.yaml`.
 - Mapping rules:
-  - `/api/v1/users/**` ➔ `music-user-service`
-  - `/api/v1/auth/**` ➔ `music-user-service`
-  - `/api/v1/catalog/**` ➔ `music-catalog-service`
-  - `/api/v1/library/**` ➔ `music-library-service`
-  - `/api/v1/audio/**` ➔ `music-audio-service`
+  - `/api/v1/users/**` ➔ `user`
+  - `/api/v1/auth/**` ➔ `user`

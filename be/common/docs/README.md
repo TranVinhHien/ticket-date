@@ -1,11 +1,11 @@
-# Music Common Library - Documentation & Package Index
+# Common Library - Documentation & Package Index
 
-This directory documents the reusable shared packages provided by **`music-common`**:
+This directory documents the reusable shared packages provided by **`common`**:
 
 ---
 
 ## 1. Package: `constants`
-Location: `music-common/constants/headers.go`
+Location: `common/constants/headers.go`
 Defines canonical HTTP header strings and Gin context keys across the entire backend:
 - `HeaderRequestID`: `"X-Request-ID"`
 - `HeaderUserID`: `"X-User-ID"`
@@ -18,7 +18,7 @@ Defines canonical HTTP header strings and Gin context keys across the entire bac
 ---
 
 ## 2. Package: `response`
-Location: `music-common/response/response.go`
+Location: `common/response/response.go`
 Provides standardized JSON envelopes and status senders:
 ```go
 type Response[T any] struct {
@@ -38,11 +38,11 @@ Available helpers:
 ---
 
 ## 3. Package: `pagination`
-Location: `music-common/pagination/`
+Location: `common/pagination/`
 Contains `PaginationMeta` (`page`, `limit`, `total`, `total_pages`) and helper functions to calculate offset/limit from query params.
 
 ---
 
 ## 4. Package: `httpclient`
-Location: `music-common/httpclient/`
+Location: `common/httpclient/`
 Provides a reusable HTTP client wrapper pre-configured with connection timeouts and header propagation for inter-service communication.

@@ -1,4 +1,4 @@
-# Music User Service - API Contracts
+# User Service - API Contracts
 
 ---
 
@@ -15,7 +15,7 @@ Creates a new user credential, default role (`user`), and profile.
     "full_name": "John Doe",
     "avatar_url": "https://...",
     "phone_number": "+1234567890",
-    "home_address": "123 Music St",
+    "home_address": "123 St",
     "current_lat": 10.7769,
     "current_lng": 106.7009
   }
@@ -110,7 +110,7 @@ Revokes the provided refresh token in the database.
 
 ## 2. User Profile Endpoints (Group: `/api/v1/users` & `/api/v1/auth`)
 
-Both routes require authentication. When routed through `music-api-gateway`, user ID is provided via `X-User-ID` header. When called standalone, Bearer token is verified via local middleware.
+Both routes require authentication. When routed through `gateway`, user ID is provided via `X-User-ID` header. When called standalone, Bearer token is verified via local middleware.
 
 | Method | Endpoint | Description |
 |---|---|---|

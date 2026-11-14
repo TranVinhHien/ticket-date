@@ -33,7 +33,7 @@ func createTestToken(secret string, userID uuid.UUID, email string, roles []stri
 func TestHealthCheck(t *testing.T) {
 	cfg := &config.Config{
 		App: config.AppConfig{
-			Name:    "music-api-gateway",
+			Name:    "gateway",
 			Version: "v1.0.0",
 		},
 		HttpServer: config.HttpServerConfig{
@@ -105,7 +105,7 @@ func TestProxyRouteForwardingWithAuthAndPermissions(t *testing.T) {
 
 	cfg := &config.Config{
 		App: config.AppConfig{
-			Name: "music-api-gateway",
+			Name: "gateway",
 		},
 		HttpServer: config.HttpServerConfig{
 			Mode: "test",

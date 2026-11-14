@@ -1,6 +1,6 @@
-# Music User Service - Data Model & Database Schema
+# User Service - Data Model & Database Schema
 
-The database persistence layer uses **GORM** targeting **CockroachDB / PostgreSQL** (`music-core-db`). All models are defined in `internal/models/user.go`.
+The database persistence layer uses **GORM** targeting **CockroachDB / PostgreSQL**. All models are defined in `internal/models/user.go`.
 
 ---
 

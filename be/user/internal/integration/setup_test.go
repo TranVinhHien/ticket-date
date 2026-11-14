@@ -30,7 +30,7 @@ var testRouter *gin.Engine
 func TestMain(m *testing.M) {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
-	container, err := tcpostgres.Run(ctx, "postgres:16-alpine", tcpostgres.WithDatabase("music_core_integration"), tcpostgres.WithUsername("test"), tcpostgres.WithPassword("test"), tcpostgres.BasicWaitStrategies())
+	container, err := tcpostgres.Run(ctx, "postgres:16-alpine", tcpostgres.WithDatabase("ticket"), tcpostgres.WithUsername("test"), tcpostgres.WithPassword("test"), tcpostgres.BasicWaitStrategies())
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "start postgres container: %v\n", err)
 		os.Exit(1)

@@ -85,7 +85,7 @@ func main() {
 				"./config/permissions.json",
 				"./permissions.json",
 				"/etc/gateway/permissions.json",
-				"./music-api-gateway/config/permissions.json",
+				"./gateway/config/permissions.json",
 				"../config/permissions.json",
 			})
 		}

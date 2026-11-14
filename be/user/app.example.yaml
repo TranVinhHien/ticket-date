@@ -1,5 +1,5 @@
 app:
-  name: "music-user-service"
+  name: "user"
   version: "v1.0.0"
 
 http_server:
@@ -22,7 +22,7 @@ cockroach_db:
   port: 5432
   user: "postgres"
   password: "your_password_here"
-  db_name: "music-core-db"
+  db_name: "ticket"
   ssl_mode: "disable"
   max_open_conns: 10
   max_idle_conns: 5

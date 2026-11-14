@@ -1,9 +1,9 @@
 ---
 trigger: model_decision
-description: "Guidelines and rules for the shared foundational library module music-common."
+description: "Guidelines and rules for the shared foundational library module common."
 ---
 
-# Agent Guidelines - Music Common Library
+# Agent Guidelines - Common Library
 
 ## 1. Module Responsibility
 
@@ -30,6 +30,6 @@ description: "Guidelines and rules for the shared foundational library module mu
 
 ## 3. Implementation Rules
 
-1. **Zero External Service Dependencies**: `music-common` must never import packages from any microservice (`music-api-gateway`, `music-user-service`, etc.).
+1. **Zero External Service Dependencies**: `common` must never import packages from any microservice (`gateway`, `user`, etc.).
 2. **Backward Compatibility**: Any change to struct fields in `response` or `constants` affects all services simultaneously. Keep changes strictly additive.
-3. **Run Tests**: Always run `go test ./...` in `music-common` before committing modifications.
+3. **Run Tests**: Always run `go test ./...` in `common` before committing modifications.

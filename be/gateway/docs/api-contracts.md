@@ -1,4 +1,4 @@
-# Music API Gateway - API Routing & Authorization Contracts
+# Gateway - API Routing & Authorization Contracts
 
 ---
 
@@ -6,7 +6,7 @@
 
 | Method | Endpoint | Auth Required | Description | Response Status |
 |---|---|---|---|---|
-| `GET` | `/health` | No | Gateway liveness check | `200 OK` (`{"service":"music-api-gateway","status":"OK",...}`) |
+| `GET` | `/health` | No | Gateway liveness check | `200 OK` (`{"service":"gateway","status":"OK",...}`) |
 
 ---
 
@@ -16,14 +16,9 @@ All non-native requests are mapped to upstream targets using prefix matching:
 
 | Route Prefix | Upstream Target | Auth Required | Target Service |
 |---|---|---|---|
-| `/api/v1/auth/**` | `http://localhost:8080` | `false` | `music-user-service` |
-| `/api/v1/users/**` | `http://localhost:8080` | `true` | `music-user-service` |
-| `/api/v1/upload/**` | `http://localhost:8080` | `true` | `music-user-service` |
-| `/api/v1/catalog/**` | `http://localhost:3002` *(stub)* | `false` | `music-catalog-service` |
-| `/api/v1/library/**` | `http://localhost:3003` *(stub)* | `true` | `music-library-service` |
-| `/api/v1/listening-events/**` | `http://localhost:3004` *(stub)* | `true` | `music-listening-event-service` |
-| `/api/v1/audio/**` | `http://localhost:3005` *(stub)* | `true` | `music-audio-service` |
-
+| `/api/v1/auth/**` | `http://localhost:8080` | `false` | `user` |
+| `/api/v1/users/**` | `http://localhost:8080` | `true` | `user` |
+| `/api/v1/upload/**` | `http://localhost:8080` | `true` | `user` |
 ---
 
 ## 3. RBAC Policy Matrix (From `permissions.json`)

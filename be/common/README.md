@@ -1,6 +1,6 @@
-# Music Common Go Library (`music-common`)
+# Common Go Library (`common`)
 
-Shared Common Module for the backend microservices architecture (`music-core-backend`).
+Shared Common Module for the backend microservices architecture (`be`).
 
 ## Module Path
 ```go
@@ -138,7 +138,7 @@ The `httpclient` package provides a production-ready HTTP client:
 import "github.com/TranVinhHien/ticket-date/be/common/httpclient"
 
 client := httpclient.NewClient(
-    httpclient.WithBaseURL("http://music-audio-service:3005"),
+    httpclient.WithBaseURL("http://localhost:3005"),
     httpclient.WithTimeout(10 * time.Second),
     httpclient.WithRetries(3),
     httpclient.WithLogger(logger),

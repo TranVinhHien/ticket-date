@@ -119,8 +119,8 @@ func ResolveConfigFile(customPath string) string {
 		"app.yaml",
 		"./config/app.yaml",
 		"/etc/user-service/app.yaml",
-		fmt.Sprintf("./music-user-service/app.%s.yaml", appEnv),
-		fmt.Sprintf("../music-user-service/app.%s.yaml", appEnv),
+		fmt.Sprintf("./user/app.%s.yaml", appEnv),
+		fmt.Sprintf("../user/app.%s.yaml", appEnv),
 		fmt.Sprintf("../app.%s.yaml", appEnv),
 	}
 
@@ -142,7 +142,7 @@ func LoadConfig(path string) (*Config, error) {
 	v.AutomaticEnv()
 
 	// Default values
-	v.SetDefault("app.name", "music-user-service")
+	v.SetDefault("app.name", "user")
 	v.SetDefault("app.version", "v1.0.0")
 	v.SetDefault("http_server.host", "0.0.0.0")
 	v.SetDefault("http_server.port", 8080)
@@ -152,7 +152,7 @@ func LoadConfig(path string) (*Config, error) {
 	v.SetDefault("cockroach_db.port", 5432)
 	v.SetDefault("cockroach_db.user", "postgres")
 	v.SetDefault("cockroach_db.password", "postgres")
-	v.SetDefault("cockroach_db.db_name", "music-core-db")
+	v.SetDefault("cockroach_db.db_name", "ticket")
 	v.SetDefault("cockroach_db.ssl_mode", "disable")
 	v.SetDefault("cockroach_db.max_open_conns", 25)
 	v.SetDefault("cockroach_db.max_idle_conns", 5)

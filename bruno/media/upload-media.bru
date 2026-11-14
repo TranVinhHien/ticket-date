@@ -1,0 +1,24 @@
+meta {
+  name: upload-media
+  type: http
+  seq: 9
+}
+
+post {
+  url: {{base_url}}/api/v1/upload
+  body: multipartForm
+  auth: inherit
+}
+
+headers {
+  Authorization: Bearer {{token}}
+}
+
+body:multipart-form {
+  file: @file(/Users/hienlazada/Downloads/Wren Evans ft. itsnk - YEU - TINH HAÌ SAY HI [PERFORMANCE].mp3) @contentType(audio/mpeg)
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

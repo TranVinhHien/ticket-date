@@ -1,4 +1,4 @@
-# Internal Architecture - Music User Service
+# Internal Architecture - User Service
 
 > **Update Notice**: Update this file when changing internal structures, auth business logic, database models, or User Service APIs.
 
@@ -6,7 +6,7 @@
 
 ## 1. Directory Structure
 ```
-music-user-service/
+user/
 ├── cmd/
 │   └── server/
 │       └── main.go       # HTTP server entry point and Dependency Injection (DI)
