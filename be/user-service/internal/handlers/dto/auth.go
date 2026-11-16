@@ -4,7 +4,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/TranVinhHien/ticket-date/be/user/internal/models"
+	"github.com/TranVinhHien/ticket-date/be/user-service/internal/models"
 	"github.com/google/uuid"
 )
 

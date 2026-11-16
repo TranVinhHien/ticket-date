@@ -6,9 +6,9 @@ import (
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 
-	"github.com/TranVinhHien/ticket-date/be/user/internal/handlers"
-	"github.com/TranVinhHien/ticket-date/be/user/internal/handlers/dto"
-	"github.com/TranVinhHien/ticket-date/be/user/internal/services"
+	"github.com/TranVinhHien/ticket-date/be/user-service/internal/handlers"
+	"github.com/TranVinhHien/ticket-date/be/user-service/internal/handlers/dto"
+	"github.com/TranVinhHien/ticket-date/be/user-service/internal/services"
 )
 
 // SetupRouter initializes and configures the gin router

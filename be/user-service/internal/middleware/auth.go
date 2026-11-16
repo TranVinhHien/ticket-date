@@ -4,13 +4,13 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/TranVinhHien/ticket-date/be/user/internal/handlers/dto"
+	"github.com/TranVinhHien/ticket-date/be/user-service/internal/handlers/dto"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	_ "github.com/joho/godotenv"
 
-	"github.com/TranVinhHien/ticket-date/be/user/internal/config"
+	"github.com/TranVinhHien/ticket-date/be/user-service/internal/config"
 )
 
 type Claims struct {

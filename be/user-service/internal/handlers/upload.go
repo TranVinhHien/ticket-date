@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/TranVinhHien/ticket-date/be/user/internal/handlers/dto"
-	"github.com/TranVinhHien/ticket-date/be/user/internal/services"
+	"github.com/TranVinhHien/ticket-date/be/user-service/internal/handlers/dto"
+	"github.com/TranVinhHien/ticket-date/be/user-service/internal/services"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 )

@@ -5,7 +5,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/TranVinhHien/ticket-date/be/user/internal/handlers/dto"
+	"github.com/TranVinhHien/ticket-date/be/user-service/internal/handlers/dto"
 )
 
 func TestUploadServiceUploadImageContract(t *testing.T) {

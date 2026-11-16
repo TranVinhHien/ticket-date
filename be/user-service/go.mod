@@ -1,4 +1,4 @@
-module github.com/TranVinhHien/ticket-date/be/user
+module github.com/TranVinhHien/ticket-date/be/user-service
 
 go 1.26.10
 

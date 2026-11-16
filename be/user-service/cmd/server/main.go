@@ -5,14 +5,14 @@ import (
 	"fmt"
 	"log"
 
-	_ "github.com/TranVinhHien/ticket-date/be/user/docs"
-	"github.com/TranVinhHien/ticket-date/be/user/internal/config"
-	"github.com/TranVinhHien/ticket-date/be/user/internal/database"
-	"github.com/TranVinhHien/ticket-date/be/user/internal/database/migrations"
-	"github.com/TranVinhHien/ticket-date/be/user/internal/handlers"
-	"github.com/TranVinhHien/ticket-date/be/user/internal/repository"
-	"github.com/TranVinhHien/ticket-date/be/user/internal/router"
-	"github.com/TranVinhHien/ticket-date/be/user/internal/services"
+	_ "github.com/TranVinhHien/ticket-date/be/user-service/docs"
+	"github.com/TranVinhHien/ticket-date/be/user-service/internal/config"
+	"github.com/TranVinhHien/ticket-date/be/user-service/internal/database"
+	"github.com/TranVinhHien/ticket-date/be/user-service/internal/database/migrations"
+	"github.com/TranVinhHien/ticket-date/be/user-service/internal/handlers"
+	"github.com/TranVinhHien/ticket-date/be/user-service/internal/repository"
+	"github.com/TranVinhHien/ticket-date/be/user-service/internal/router"
+	"github.com/TranVinhHien/ticket-date/be/user-service/internal/services"
 )
 
 var confPath = flag.String("config", "", "Path to user service config yaml file")

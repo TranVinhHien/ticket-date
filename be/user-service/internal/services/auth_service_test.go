@@ -5,9 +5,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/TranVinhHien/ticket-date/be/user/internal/config"
-	"github.com/TranVinhHien/ticket-date/be/user/internal/handlers/dto"
-	"github.com/TranVinhHien/ticket-date/be/user/internal/models"
+	"github.com/TranVinhHien/ticket-date/be/user-service/internal/config"
+	"github.com/TranVinhHien/ticket-date/be/user-service/internal/handlers/dto"
+	"github.com/TranVinhHien/ticket-date/be/user-service/internal/models"
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 )
