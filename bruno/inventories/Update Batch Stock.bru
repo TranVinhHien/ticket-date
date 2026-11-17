@@ -1,0 +1,29 @@
+meta {
+  name: Update Batch Stock
+  type: http
+  seq: 2
+}
+
+put {
+  url: {{inventory_direct_url}}/api/v1/inventories/stock
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  X-User-ID: a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11
+}
+
+body:json {
+  {
+    "reference_type": "ADMIN_UPDATE",
+    "note": "Admin inventory stock adjustment",
+    "items": [
+      {
+        "ticket_type_id": "{{ticket_type_id}}",
+        "total_quantity": 150
+      }
+    ]
+  }
+}

@@ -1,0 +1,11 @@
+meta {
+  name: Get Current Stock (Query)
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{inventory_direct_url}}/api/v1/inventories/stock?ticket_type_ids={{ticket_type_id}}
+  body: none
+  auth: none
+}

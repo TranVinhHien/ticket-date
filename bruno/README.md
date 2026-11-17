@@ -7,6 +7,8 @@ API testing collection for the ticket microservices architecture using the Bruno
 - `auth/`: Registration, login, token refresh (User Service).
 - `user/`: User profile management (User Service).
 - `media/`: Media asset & avatar uploads (User Service).
+- `events/`: Event management and ticketing (Event Service).
+- `inventories/`: Ticket inventory batch creation, stock updates, and current stock lookup (Inventory Service).
 ## Usage Guide
 
 1. Open this directory in the **Bruno** application.

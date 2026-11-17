@@ -1,0 +1,37 @@
+meta {
+  name: Create Batch Inventory
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{inventory_direct_url}}/api/v1/inventories
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  X-User-ID: a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11
+}
+
+body:json {
+  {
+    "reference_type": "INITIAL_IMPORT",
+    "note": "Initial inventory batch creation",
+    "items": [
+      {
+        "ticket_type_id": "{{ticket_type_id}}",
+        "total_quantity": 100
+      }
+    ]
+  }
+}
+
+script:post-response {
+  const body = res.getBody();
+  if (body && body.data && body.data.length > 0) {
+    bru.setVar("inventory_id", body.data[0].id);
+    console.log("Saved inventory_id:", body.data[0].id);
+  }
+}

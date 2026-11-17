@@ -1,0 +1,23 @@
+meta {
+  name: Get Current Stock (Body)
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{inventory_direct_url}}/api/v1/inventories/stock
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "ticket_type_ids": [
+      "{{ticket_type_id}}"
+    ]
+  }
+}
