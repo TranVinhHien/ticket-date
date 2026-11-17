@@ -1,0 +1,18 @@
+meta {
+  name: List Organizers
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{event_direct_url}}/api/v1/organizers?page=1&limit=10&query=&status=ACTIVE
+  body: none
+  auth: none
+}
+
+params:query {
+  page: 1
+  limit: 10
+  ~query: LiveNation
+  ~status: ACTIVE
+}

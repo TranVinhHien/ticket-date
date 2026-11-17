@@ -1,0 +1,11 @@
+meta {
+  name: Delete Organizer
+  type: http
+  seq: 5
+}
+
+delete {
+  url: {{event_direct_url}}/api/v1/organizers/{{organizer_id}}
+  body: none
+  auth: none
+}

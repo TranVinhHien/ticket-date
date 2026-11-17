@@ -1,0 +1,39 @@
+meta {
+  name: Update Event
+  type: http
+  seq: 5
+}
+
+put {
+  url: {{event_direct_url}}/api/v1/events/{{event_id}}
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "description": "Updated event description with headline artists announced!",
+    "poster_url": "https://example.com/poster-updated.jpg",
+    "ticket_types": [
+      {
+        "id": "{{ticket_type_id}}",
+        "price": 2800000,
+        "description": "VIP Standing with backstage pass included"
+      },
+      {
+        "sku": "SS26-EARLY-BIRD",
+        "name": "Early Bird Admission",
+        "price": 650000,
+        "currency": "VND",
+        "max_per_order": 2,
+        "sale_start_at": "2026-05-01T09:00:00Z",
+        "sale_end_at": "2026-05-31T23:59:59Z",
+        "status": "ACTIVE"
+      }
+    ]
+  }
+}

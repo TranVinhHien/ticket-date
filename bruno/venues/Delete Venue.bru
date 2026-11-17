@@ -1,0 +1,11 @@
+meta {
+  name: Delete Venue
+  type: http
+  seq: 5
+}
+
+delete {
+  url: {{event_direct_url}}/api/v1/venues/{{venue_id}}
+  body: none
+  auth: none
+}

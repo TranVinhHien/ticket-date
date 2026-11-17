@@ -1,0 +1,22 @@
+meta {
+  name: Update Venue
+  type: http
+  seq: 4
+}
+
+put {
+  url: {{event_direct_url}}/api/v1/venues/{{venue_id}}
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "capacity": 25000,
+    "description": "Expanded capacity exhibition & concert venue"
+  }
+}

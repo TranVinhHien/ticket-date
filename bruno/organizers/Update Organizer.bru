@@ -1,0 +1,22 @@
+meta {
+  name: Update Organizer
+  type: http
+  seq: 4
+}
+
+put {
+  url: {{event_direct_url}}/api/v1/organizers/{{organizer_id}}
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "description": "Updated entertainment promoter description",
+    "address": "456 Le Loi, District 1, Ho Chi Minh City"
+  }
+}

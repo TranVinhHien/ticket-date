@@ -1,0 +1,39 @@
+meta {
+  name: Create Venue
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{event_direct_url}}/api/v1/venues
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "organizer_id": "{{organizer_id}}",
+    "name": "Saigon Exhibition and Convention Center (SECC)",
+    "address": "799 Nguyen Van Linh, Tan Phu, District 7",
+    "city": "Ho Chi Minh City",
+    "country": "Vietnam",
+    "map_url": "https://maps.google.com/?q=SECC",
+    "latitude": 10.7327,
+    "longitude": 106.7214,
+    "capacity": 20000,
+    "description": "Premier international exhibition & convention center",
+    "status": "ACTIVE"
+  }
+}
+
+script:post-response {
+  const body = res.getBody();
+  if (body && body.data && body.data.id) {
+    bru.setVar("venue_id", body.data.id);
+    console.log("Saved venue_id:", body.data.id);
+  }
+}

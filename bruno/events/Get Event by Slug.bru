@@ -1,0 +1,11 @@
+meta {
+  name: Get Event by Slug
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{event_direct_url}}/api/v1/events/slug/{{event_slug}}
+  body: none
+  auth: none
+}
