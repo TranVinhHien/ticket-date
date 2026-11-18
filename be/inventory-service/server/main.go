@@ -4,8 +4,10 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"time"
 
 	_ "github.com/TranVinhHien/ticket-date/be/inventory-service/docs"
+	"github.com/TranVinhHien/ticket-date/be/inventory-service/internal/cache"
 	"github.com/TranVinhHien/ticket-date/be/inventory-service/internal/config"
 	"github.com/TranVinhHien/ticket-date/be/inventory-service/internal/database"
 	"github.com/TranVinhHien/ticket-date/be/inventory-service/internal/database/migrations"
@@ -44,6 +46,10 @@ func main() {
 	database.Connect()
 	defer database.Close()
 
+	// Connect to Redis
+	database.ConnectRedis()
+	defer database.CloseRedis()
+
 	pool := database.GetPool()
 	err = database.Migrate(pool, migrations.FS, ".")
 	if err != nil {
@@ -51,11 +57,19 @@ func main() {
 	}
 	fmt.Println("Database migrated successfully")
 
+	// Initialize cache (uses Redis by default, fallback to in-memory if Redis client is not available)
+	var cacheEngine cache.Cache
+	if rdb := database.GetRedisClient(); rdb != nil {
+		cacheEngine = cache.NewRedisCache(rdb, 5*time.Minute)
+	} else {
+		cacheEngine = cache.NewMemoryCache(5*time.Minute, 1*time.Minute)
+	}
+
 	// Initialize repositories
 	inventoryRepo := repository.NewInventoryRepository(pool)
 
 	// Initialize services
-	inventoryService := services.NewInventoryService(inventoryRepo)
+	inventoryService := services.NewInventoryService(inventoryRepo, cacheEngine)
 
 	// Initialize handlers
 	inventoryHandler := handlers.NewInventoryHandler(inventoryService)

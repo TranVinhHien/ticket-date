@@ -78,3 +78,35 @@ CREATE INDEX idx_order_items_order
 CREATE INDEX idx_order_items_ticket_type
     ON order_items(ticket_type_id)
     WHERE deleted_at IS NULL;
+
+-- order_queue table
+CREATE TABLE order_queue (
+    id           BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    token        VARCHAR(64) NOT NULL UNIQUE,
+    ticket_id    INT NOT NULL,
+    quantity     INT NOT NULL,
+    user_id      INT NOT NULL,
+    status       SMALLINT NOT NULL DEFAULT 0,
+    order_number VARCHAR(64),
+    message      VARCHAR(255),
+    created_at   TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at   TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- outbox_event table
+CREATE TABLE outbox_event (
+    id           BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    aggregate_id VARCHAR(64) NOT NULL,
+    event_type   VARCHAR(64) NOT NULL,
+    payload      TEXT NOT NULL,
+    status       SMALLINT NOT NULL DEFAULT 0,
+    created_at   TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    published_at TIMESTAMP,
+
+    CONSTRAINT idx_outbox_event_aggregate_type
+        UNIQUE (aggregate_id, event_type)
+);
+
+-- Index
+CREATE INDEX idx_outbox_event_status_created
+    ON outbox_event (status, created_at);

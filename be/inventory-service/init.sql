@@ -76,3 +76,11 @@ CREATE INDEX idx_inventory_transaction_items_transaction
 
 CREATE INDEX idx_inventory_transaction_items_inventory
     ON inventory_transaction_items(ticket_inventory_id);
+
+-- 8. idempotency_key table — consumer gate chống Kafka retry duplicate
+CREATE TABLE  idempotency_key (
+    token      VARCHAR(64) PRIMARY KEY NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    expires_at  TIMESTAMPTZ NOT NULL
+)
+CREATE INDEX idx_idempotency_expires_at ON idempotency_key (expires_at);

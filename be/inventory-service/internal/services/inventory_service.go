@@ -2,27 +2,37 @@ package services
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"time"
 
+	"github.com/TranVinhHien/ticket-date/be/inventory-service/internal/cache"
 	"github.com/TranVinhHien/ticket-date/be/inventory-service/internal/database/db"
 	"github.com/TranVinhHien/ticket-date/be/inventory-service/internal/handlers/dto"
 	"github.com/TranVinhHien/ticket-date/be/inventory-service/internal/repository"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 )
 
 type InventoryService interface {
 	CreateInventoryBatch(ctx context.Context, userID *uuid.UUID, req dto.CreateInventoryBatchRequest) ([]dto.InventoryResponse, error)
 	UpdateInventoryStockBatch(ctx context.Context, userID *uuid.UUID, req dto.UpdateInventoryBatchRequest) ([]dto.StockResponse, error)
-	GetCurrentStock(ctx context.Context, ticketTypeIDs []uuid.UUID) ([]dto.StockResponse, error)
+	GetCurrentStock(ctx context.Context, ticketTypeID uuid.UUID) (*dto.StockResponse, error)
 }
 
 type inventoryService struct {
-	repo repository.InventoryRepository
+	repo  repository.InventoryRepository
+	cache cache.Cache
 }
 
-func NewInventoryService(repo repository.InventoryRepository) InventoryService {
+func stockAvailableCacheKey(ticketTypeID uuid.UUID) string {
+	return fmt.Sprintf("inventory:available:%s", ticketTypeID)
+}
+
+func NewInventoryService(repo repository.InventoryRepository, cache cache.Cache) InventoryService {
 	return &inventoryService{
-		repo: repo,
+		repo:  repo,
+		cache: cache,
 	}
 }
 
@@ -119,6 +129,15 @@ func (s *inventoryService) CreateInventoryBatch(ctx context.Context, userID *uui
 
 	if err != nil {
 		return nil, err
+	}
+
+	// Invalidate cache for created ticket types
+	if s.cache != nil {
+		keys := make([]string, 0, len(req.Items))
+		for _, item := range req.Items {
+			keys = append(keys, stockAvailableCacheKey(item.TicketTypeID))
+		}
+		_ = s.cache.Delete(ctx, keys...)
 	}
 
 	return createdInventories, nil
@@ -232,40 +251,58 @@ func (s *inventoryService) UpdateInventoryStockBatch(ctx context.Context, userID
 		return nil, err
 	}
 
+	// Invalidate cache for updated ticket types
+	if s.cache != nil {
+		keys := make([]string, 0, len(req.Items))
+		for _, item := range req.Items {
+			keys = append(keys, stockAvailableCacheKey(item.TicketTypeID))
+		}
+		_ = s.cache.Delete(ctx, keys...)
+	}
+
 	return updatedStocks, nil
 }
 
-func (s *inventoryService) GetCurrentStock(ctx context.Context, ticketTypeIDs []uuid.UUID) ([]dto.StockResponse, error) {
-	if len(ticketTypeIDs) == 0 {
-		return []dto.StockResponse{}, nil
-	}
+// GetCurrentStock checks available stock for a single ticketTypeID using Redis Integer Counter
+// with Distributed Mutex Lock (PRO_LOCK_KEY_ITEM + ticketId) and Retry to prevent Cache Breakdown.
+func (s *inventoryService) GetCurrentStock(ctx context.Context, ticketTypeID uuid.UUID) (*dto.StockResponse, error) {
+	cacheKey := stockAvailableCacheKey(ticketTypeID)
+	lockKey := cache.ProLockKeyItem(ticketTypeID)
 
-	// De-duplicate query IDs
-	seen := make(map[uuid.UUID]bool, len(ticketTypeIDs))
-	uniqueIDs := make([]uuid.UUID, 0, len(ticketTypeIDs))
-	for _, id := range ticketTypeIDs {
-		if !seen[id] {
-			seen[id] = true
-			uniqueIDs = append(uniqueIDs, id)
-		}
-	}
-
-	inventories, err := s.repo.Queries().GetInventoriesByTicketTypeIDs(ctx, uniqueIDs)
+	available, err := cache.GetIntWithLock(
+		ctx,
+		s.cache,
+		cacheKey,
+		lockKey,
+		5*time.Minute,
+		func(ctx context.Context) (int64, error) {
+			inv, err := s.repo.Queries().GetInventoryByTicketTypeID(ctx, ticketTypeID)
+			if err != nil {
+				if errors.Is(err, pgx.ErrNoRows) {
+					//cachinng -1 to indicate not found
+					return -1, nil
+				}
+				return 0, fmt.Errorf("get inventory by ticket type id %s: %w", ticketTypeID, err)
+			}
+			avail := inv.TotalQuantity - (inv.HeldQuantity + inv.SoldQuantity)
+			return int64(avail), nil
+		},
+		cache.LockOptions{
+			LockTTL:      5 * time.Second,
+			MaxRetries:   10,
+			RetryBackoff: 50 * time.Millisecond,
+		},
+	)
 	if err != nil {
-		return nil, fmt.Errorf("get inventories by ticket type ids: %w", err)
+		return nil, err
+	}
+	if available < 0 {
+		return nil, dto.ErrInventoryNotFound
 	}
 
-	result := make([]dto.StockResponse, 0, len(inventories))
-	for _, inv := range inventories {
-		available := inv.TotalQuantity - (inv.HeldQuantity + inv.SoldQuantity)
-		result = append(result, dto.StockResponse{
-			TicketTypeID:      inv.TicketTypeID,
-			TotalQuantity:     inv.TotalQuantity,
-			HeldQuantity:      inv.HeldQuantity,
-			SoldQuantity:      inv.SoldQuantity,
-			AvailableQuantity: available,
-		})
-	}
-
-	return result, nil
+	return &dto.StockResponse{
+		TicketTypeID:      ticketTypeID,
+		AvailableQuantity: int32(available),
+		HasStock:          available > 0,
+	}, nil
 }

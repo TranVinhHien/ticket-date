@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/TranVinhHien/ticket-date/be/inventory-service/internal/cache"
 	"github.com/TranVinhHien/ticket-date/be/inventory-service/internal/database/db"
 	"github.com/TranVinhHien/ticket-date/be/inventory-service/internal/handlers/dto"
 	"github.com/TranVinhHien/ticket-date/be/inventory-service/internal/services"
@@ -121,7 +122,7 @@ func (r *testRepo) ExecTx(ctx context.Context, fn func(q *db.Queries) error) err
 }
 
 func TestCreateInventoryBatch_Validations(t *testing.T) {
-	svc := services.NewInventoryService(&testRepo{dbtx: &mockDBTX{}})
+	svc := services.NewInventoryService(&testRepo{dbtx: &mockDBTX{}}, nil)
 	ctx := context.Background()
 
 	// Test empty items
@@ -157,7 +158,7 @@ func TestCreateInventoryBatch_ConflictExists(t *testing.T) {
 			}, nil
 		},
 	}
-	svc := services.NewInventoryService(&testRepo{dbtx: mock})
+	svc := services.NewInventoryService(&testRepo{dbtx: mock}, nil)
 	ctx := context.Background()
 
 	_, err := svc.CreateInventoryBatch(ctx, nil, dto.CreateInventoryBatchRequest{
@@ -218,7 +219,7 @@ func TestCreateInventoryBatch_Success(t *testing.T) {
 		},
 	}
 
-	svc := services.NewInventoryService(&testRepo{dbtx: mock})
+	svc := services.NewInventoryService(&testRepo{dbtx: mock}, nil)
 	ctx := context.Background()
 
 	result, err := svc.CreateInventoryBatch(ctx, nil, dto.CreateInventoryBatchRequest{
@@ -245,7 +246,7 @@ func TestUpdateInventoryStockBatch_NotFound(t *testing.T) {
 			return &mockRows{rows: [][]interface{}{}}, nil
 		},
 	}
-	svc := services.NewInventoryService(&testRepo{dbtx: mock})
+	svc := services.NewInventoryService(&testRepo{dbtx: mock}, nil)
 	ctx := context.Background()
 
 	_, err := svc.UpdateInventoryStockBatch(ctx, nil, dto.UpdateInventoryBatchRequest{
@@ -273,7 +274,7 @@ func TestUpdateInventoryStockBatch_InvalidQuantityConstraint(t *testing.T) {
 			}, nil
 		},
 	}
-	svc := services.NewInventoryService(&testRepo{dbtx: mock})
+	svc := services.NewInventoryService(&testRepo{dbtx: mock}, nil)
 	ctx := context.Background()
 
 	// Try updating to total_quantity = 30 (< 50)
@@ -336,7 +337,7 @@ func TestUpdateInventoryStockBatch_Success(t *testing.T) {
 		},
 	}
 
-	svc := services.NewInventoryService(&testRepo{dbtx: mock})
+	svc := services.NewInventoryService(&testRepo{dbtx: mock}, nil)
 	ctx := context.Background()
 
 	result, err := svc.UpdateInventoryStockBatch(ctx, nil, dto.UpdateInventoryBatchRequest{
@@ -357,38 +358,162 @@ func TestUpdateInventoryStockBatch_Success(t *testing.T) {
 }
 
 func TestGetCurrentStock(t *testing.T) {
-	ticketID1 := uuid.New()
-	ticketID2 := uuid.New()
+	ticketID := uuid.New()
+	invID := uuid.New()
 	now := time.Now().UTC()
 
 	mock := &mockDBTX{
-		queryFunc: func(ctx context.Context, query string, args ...interface{}) (pgx.Rows, error) {
-			return &mockRows{
-				rows: [][]interface{}{
-					{uuid.New(), ticketID1, int32(100), int32(10), int32(20), nil, now, nil, now, nil, nil},
-					{uuid.New(), ticketID2, int32(50), int32(0), int32(5), nil, now, nil, now, nil, nil},
+		queryRowFunc: func(ctx context.Context, query string, args ...interface{}) pgx.Row {
+			return &mockRow{
+				scanFunc: func(dest ...interface{}) error {
+					*dest[0].(*uuid.UUID) = invID
+					*dest[1].(*uuid.UUID) = ticketID
+					*dest[2].(*int32) = 100
+					*dest[3].(*int32) = 10
+					*dest[4].(*int32) = 20
+					*dest[5].(**uuid.UUID) = nil
+					*dest[6].(*time.Time) = now
+					*dest[7].(**uuid.UUID) = nil
+					*dest[8].(*time.Time) = now
+					*dest[9].(**uuid.UUID) = nil
+					*dest[10].(**time.Time) = nil
+					return nil
 				},
-			}, nil
+			}
 		},
 	}
 
-	svc := services.NewInventoryService(&testRepo{dbtx: mock})
+	svc := services.NewInventoryService(&testRepo{dbtx: mock}, nil)
 	ctx := context.Background()
 
-	result, err := svc.GetCurrentStock(ctx, []uuid.UUID{ticketID1, ticketID2})
+	result, err := svc.GetCurrentStock(ctx, ticketID)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if len(result) != 2 {
-		t.Fatalf("expected 2 stock results, got %d", len(result))
+
+	// 100 - (10 + 20) = 70
+	if result.AvailableQuantity != 70 {
+		t.Fatalf("expected available 70, got %d", result.AvailableQuantity)
+	}
+	if !result.HasStock {
+		t.Fatalf("expected HasStock to be true")
+	}
+}
+
+func TestGetCurrentStock_WithCacheHitAndInvalidation(t *testing.T) {
+	ticketID := uuid.New()
+	invID := uuid.New()
+	now := time.Now().UTC()
+	dbGetStockQueryCount := 0
+
+	mock := &mockDBTX{
+		queryFunc: func(ctx context.Context, query string, args ...interface{}) (pgx.Rows, error) {
+			// For UpdateInventoryStockBatch lock rows
+			return &mockRows{
+				rows: [][]interface{}{
+					{invID, ticketID, int32(100), int32(10), int32(20), nil, now, nil, now, nil, nil},
+				},
+			}, nil
+		},
+		queryRowFunc: func(ctx context.Context, query string, args ...interface{}) pgx.Row {
+			return &mockRow{
+				scanFunc: func(dest ...interface{}) error {
+					if len(dest) == 7 { // CreateInventoryTransaction
+						*dest[0].(*uuid.UUID) = uuid.New()
+						*dest[1].(*string) = "ADJUSTMENT"
+						*dest[2].(**string) = nil
+						*dest[3].(**uuid.UUID) = nil
+						*dest[4].(**string) = nil
+						*dest[5].(**uuid.UUID) = nil
+						*dest[6].(*time.Time) = now
+					} else if len(dest) == 11 {
+						// Could be GetInventoryByTicketTypeID or UpdateTicketInventoryStock
+						if len(args) == 1 { // GetInventoryByTicketTypeID takes 1 arg ($1: ticketTypeID)
+							dbGetStockQueryCount++
+							*dest[0].(*uuid.UUID) = invID
+							*dest[1].(*uuid.UUID) = ticketID
+							*dest[2].(*int32) = 100
+							*dest[3].(*int32) = 10
+							*dest[4].(*int32) = 20
+							*dest[5].(**uuid.UUID) = nil
+							*dest[6].(*time.Time) = now
+							*dest[7].(**uuid.UUID) = nil
+							*dest[8].(*time.Time) = now
+							*dest[9].(**uuid.UUID) = nil
+							*dest[10].(**time.Time) = nil
+						} else { // UpdateTicketInventoryStock takes 3 args ($1: id, $2: qty, $3: user)
+							*dest[0].(*uuid.UUID) = invID
+							*dest[1].(*uuid.UUID) = ticketID
+							*dest[2].(*int32) = 120
+							*dest[3].(*int32) = 10
+							*dest[4].(*int32) = 20
+							*dest[5].(**uuid.UUID) = nil
+							*dest[6].(*time.Time) = now
+							*dest[7].(**uuid.UUID) = nil
+							*dest[8].(*time.Time) = now
+							*dest[9].(**uuid.UUID) = nil
+							*dest[10].(**time.Time) = nil
+						}
+					} else if len(dest) == 5 { // CreateInventoryTransactionItem
+						*dest[0].(*uuid.UUID) = uuid.New()
+						*dest[1].(*uuid.UUID) = uuid.New()
+						*dest[2].(*uuid.UUID) = invID
+						*dest[3].(*int32) = 20
+						*dest[4].(*time.Time) = now
+					}
+					return nil
+				},
+			}
+		},
 	}
 
-	// For ticketID1: 100 - (10 + 20) = 70
-	if result[0].AvailableQuantity != 70 {
-		t.Fatalf("expected available 70, got %d", result[0].AvailableQuantity)
+	memCache := cache.NewMemoryCache(5*time.Minute, 1*time.Minute)
+	svc := services.NewInventoryService(&testRepo{dbtx: mock}, memCache)
+	ctx := context.Background()
+
+	// 1. First Call: Cache Miss -> Queries DB (dbGetStockQueryCount = 1)
+	res1, err := svc.GetCurrentStock(ctx, ticketID)
+	if err != nil {
+		t.Fatalf("unexpected error on first call: %v", err)
 	}
-	// For ticketID2: 50 - (0 + 5) = 45
-	if result[1].AvailableQuantity != 45 {
-		t.Fatalf("expected available 45, got %d", result[1].AvailableQuantity)
+	if res1.AvailableQuantity != 70 || !res1.HasStock {
+		t.Fatalf("expected available quantity 70 and has_stock true, got %+v", res1)
+	}
+	if dbGetStockQueryCount != 1 {
+		t.Fatalf("expected 1 DB query on cache miss, got %d", dbGetStockQueryCount)
+	}
+
+	// 2. Second Call: Cache Hit -> O(1) integer retrieval from cache, NO DB call (dbGetStockQueryCount remains 1)
+	res2, err := svc.GetCurrentStock(ctx, ticketID)
+	if err != nil {
+		t.Fatalf("unexpected error on second call: %v", err)
+	}
+	if res2.AvailableQuantity != 70 || !res2.HasStock {
+		t.Fatalf("expected available quantity 70 from cache, got %+v", res2)
+	}
+	if dbGetStockQueryCount != 1 {
+		t.Fatalf("expected DB query count to remain 1 due to cache hit, got %d", dbGetStockQueryCount)
+	}
+
+	// 3. Update Inventory Stock -> Must invalidate cache!
+	_, err = svc.UpdateInventoryStockBatch(ctx, nil, dto.UpdateInventoryBatchRequest{
+		Items: []dto.UpdateInventoryItem{
+			{TicketTypeID: ticketID, TotalQuantity: 120},
+		},
+	})
+	if err != nil {
+		t.Fatalf("unexpected error on stock update: %v", err)
+	}
+
+	// 4. Third Call: Cache should be invalidated -> Queries DB again (dbGetStockQueryCount = 2)
+	res3, err := svc.GetCurrentStock(ctx, ticketID)
+	if err != nil {
+		t.Fatalf("unexpected error on third call: %v", err)
+	}
+	if res3.AvailableQuantity != 70 {
+		t.Fatalf("expected result, got %+v", res3)
+	}
+	if dbGetStockQueryCount != 2 {
+		t.Fatalf("expected DB GetStock count to be 2 after invalidation, got %d", dbGetStockQueryCount)
 	}
 }

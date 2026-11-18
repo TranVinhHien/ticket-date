@@ -29,6 +29,14 @@ cockroach_db:
   conn_max_lifetime: "10m"
   log_level: "info"
 
+redis:
+  host: "localhost"
+  port: 6379
+  password: ""
+  db: 0
+  pool_size: 20
+  min_idle_conns: 5
+
 aws:
   region: "ap-northeast-2"
   access_key_id: "YOUR_AWS_ACCESS_KEY_ID"

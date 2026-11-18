@@ -92,55 +92,47 @@ func (h *InventoryHandler) UpdateStockBatch(c *gin.Context) {
 	respond(c, http.StatusOK, "inventory stock updated successfully", result)
 }
 
-// GetStock returns current stock for a list of ticket_type_ids.
+// GetStock returns current stock for a single ticket_type_id.
 // @Summary Get current stock
-// @Description Returns current stock for a list of ticket type IDs.
+// @Description Returns current stock and availability for a single ticket type ID.
 // @Tags Inventory
 // @Accept json
 // @Produce json
-// @Param ticket_type_ids query string false "Comma separated ticket type UUIDs"
-// @Param request body dto.GetStockRequest false "Optional JSON body with ticket_type_ids"
+// @Param ticket_type_id query string false "Ticket type UUID"
 // @Success 200 {object} dto.Response
 // @Failure 400 {object} dto.Response
+// @Failure 404 {object} dto.Response
 // @Failure 500 {object} dto.Response
 // @Router /api/v1/inventories/stock [get]
 func (h *InventoryHandler) GetStock(c *gin.Context) {
-	var ids []uuid.UUID
+	var ticketTypeIDStr string
 
-	// Check if body is present (POST or GET with JSON body)
-	if c.Request.ContentLength > 0 && strings.Contains(c.GetHeader("Content-Type"), "application/json") {
-		var req dto.GetStockRequest
-		if err := c.ShouldBindJSON(&req); err == nil && len(req.TicketTypeIDs) > 0 {
-			ids = req.TicketTypeIDs
-		}
+	if id := c.Param("ticket_type_id"); id != "" {
+		ticketTypeIDStr = id
+	} else if id := c.Query("ticket_type_id"); id != "" {
+		ticketTypeIDStr = id
+	} else if id := c.Query("ticket_type_ids"); id != "" {
+		ticketTypeIDStr = strings.Split(id, ",")[0]
 	}
 
-	// Also parse from query parameters if not found in body
-	if len(ids) == 0 {
-		rawQuery := c.QueryArray("ticket_type_ids")
-		if len(rawQuery) == 0 {
-			rawParam := c.Query("ticket_type_ids")
-			if rawParam != "" {
-				rawQuery = strings.Split(rawParam, ",")
-			}
-		}
-
-		for _, item := range rawQuery {
-			trimmed := strings.TrimSpace(item)
-			if trimmed == "" {
-				continue
-			}
-			parsed, err := uuid.Parse(trimmed)
-			if err != nil {
-				respondError(c, http.StatusBadRequest, errors.New("invalid ticket_type_id format: "+trimmed))
-				return
-			}
-			ids = append(ids, parsed)
-		}
+	trimmed := strings.TrimSpace(ticketTypeIDStr)
+	if trimmed == "" {
+		respondError(c, http.StatusBadRequest, errors.New("ticket_type_id is required"))
+		return
 	}
 
-	result, err := h.service.GetCurrentStock(c.Request.Context(), ids)
+	ticketTypeID, err := uuid.Parse(trimmed)
 	if err != nil {
+		respondError(c, http.StatusBadRequest, errors.New("invalid ticket_type_id format: "+trimmed))
+		return
+	}
+
+	result, err := h.service.GetCurrentStock(c.Request.Context(), ticketTypeID)
+	if err != nil {
+		if errors.Is(err, dto.ErrInventoryNotFound) {
+			respondError(c, http.StatusNotFound, err)
+			return
+		}
 		respondError(c, http.StatusInternalServerError, err)
 		return
 	}

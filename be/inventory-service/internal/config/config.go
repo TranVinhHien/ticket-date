@@ -71,10 +71,15 @@ type TokenConfig struct {
 }
 
 type RedisConfig struct {
-	Host     string `mapstructure:"host"`
-	Port     int    `mapstructure:"port"`
-	Password string `mapstructure:"password"`
-	DB       int    `mapstructure:"db"`
+	Host         string        `mapstructure:"host"`
+	Port         int           `mapstructure:"port"`
+	Password     string        `mapstructure:"password"`
+	DB           int           `mapstructure:"db"`
+	PoolSize     int           `mapstructure:"pool_size"`
+	MinIdleConns int           `mapstructure:"min_idle_conns"`
+	DialTimeout  time.Duration `mapstructure:"dial_timeout"`
+	ReadTimeout  time.Duration `mapstructure:"read_timeout"`
+	WriteTimeout time.Duration `mapstructure:"write_timeout"`
 }
 
 type ExternalServicesConfig struct {
@@ -160,6 +165,15 @@ func LoadConfig(path string) (*Config, error) {
 	v.SetDefault("token.secret", "change-me-to-a-long-random-secret")
 	v.SetDefault("token.access_token_expiration_time", 3600)
 	v.SetDefault("token.refresh_token_expiration_time", 86400)
+	v.SetDefault("redis.host", "localhost")
+	v.SetDefault("redis.port", 6379)
+	v.SetDefault("redis.password", "")
+	v.SetDefault("redis.db", 0)
+	v.SetDefault("redis.pool_size", 20)
+	v.SetDefault("redis.min_idle_conns", 5)
+	v.SetDefault("redis.dial_timeout", 5*time.Second)
+	v.SetDefault("redis.read_timeout", 3*time.Second)
+	v.SetDefault("redis.write_timeout", 3*time.Second)
 
 	// Bind environment variables for Docker Compose and K8s Secrets
 	_ = v.BindEnv("http_server.port", "PORT", "SERVER_PORT", "HTTP_SERVER_PORT")
@@ -174,6 +188,10 @@ func LoadConfig(path string) (*Config, error) {
 	_ = v.BindEnv("token.secret", "JWT_SECRET", "TOKEN_SECRET")
 	_ = v.BindEnv("token.access_token_expiration_time", "ACCESS_TOKEN_EXPIRATION_TIME")
 	_ = v.BindEnv("token.refresh_token_expiration_time", "REFRESH_TOKEN_EXPIRATION_TIME")
+	_ = v.BindEnv("redis.host", "REDIS_HOST")
+	_ = v.BindEnv("redis.port", "REDIS_PORT")
+	_ = v.BindEnv("redis.password", "REDIS_PASSWORD")
+	_ = v.BindEnv("redis.db", "REDIS_DB")
 	_ = v.BindEnv("aws.region", "AWS_REGION")
 	_ = v.BindEnv("aws.access_key_id", "AWS_ACCESS_KEY_ID")
 	_ = v.BindEnv("aws.secret_access_key", "AWS_SECRET_ACCESS_KEY")

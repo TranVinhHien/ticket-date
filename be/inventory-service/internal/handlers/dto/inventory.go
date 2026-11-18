@@ -40,7 +40,7 @@ type UpdateInventoryBatchRequest struct {
 }
 
 type GetStockRequest struct {
-	TicketTypeIDs []uuid.UUID `json:"ticket_type_ids" binding:"required,min=1"`
+	TicketTypeID uuid.UUID `json:"ticket_type_id" form:"ticket_type_id" binding:"required"`
 }
 
 type InventoryResponse struct {
@@ -58,8 +58,9 @@ type InventoryResponse struct {
 
 type StockResponse struct {
 	TicketTypeID      uuid.UUID `json:"ticket_type_id"`
-	TotalQuantity     int32     `json:"total_quantity"`
-	HeldQuantity      int32     `json:"held_quantity"`
-	SoldQuantity      int32     `json:"sold_quantity"`
+	TotalQuantity     int32     `json:"total_quantity,omitempty"`
+	HeldQuantity      int32     `json:"held_quantity,omitempty"`
+	SoldQuantity      int32     `json:"sold_quantity,omitempty"`
 	AvailableQuantity int32     `json:"available_quantity"`
+	HasStock          bool      `json:"has_stock"`
 }
