@@ -13,7 +13,18 @@ var (
 	ErrInvalidQuantity        = errors.New("total quantity cannot be less than held + sold quantity")
 	ErrEmptyBatch             = errors.New("batch items cannot be empty")
 	ErrDuplicateTicketTypeID  = errors.New("duplicate ticket_type_id in request batch")
+	ErrInsufficientStock      = errors.New("insufficient stock")
+	ErrInvalidTicketTypeID    = errors.New("invalid ticket_type_id")
 )
+
+type DeductStockItemDTO struct {
+	TicketTypeID uuid.UUID `json:"ticket_type_id" binding:"required"`
+	Quantity     int32     `json:"quantity" binding:"required,gt=0"`
+}
+
+type DeductStockRequest struct {
+	Items []DeductStockItemDTO `json:"items" binding:"required,min=1,dive"`
+}
 
 type CreateInventoryItem struct {
 	TicketTypeID  uuid.UUID `json:"ticket_type_id" binding:"required"`

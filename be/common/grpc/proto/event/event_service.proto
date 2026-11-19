@@ -1,0 +1,29 @@
+syntax = "proto3";
+
+package event;
+
+option go_package = "github.com/TranVinhHien/ticket-date/be/common/grpc/pb/event;pbEvent";
+
+service EventService {
+  rpc GetTicketTypes(GetTicketTypesRequest) returns (GetTicketTypesResponse);
+}
+
+message GetTicketTypesRequest {
+  repeated string ticket_type_ids = 1;
+}
+
+message TicketTypeDetail {
+  string id = 1;
+  string event_id = 2;
+  string sku = 3;
+  string name = 4;
+  string description = 5;
+  int64 price = 6;
+  string currency = 7;
+  int32 max_per_order = 8;
+  string status = 9;
+}
+
+message GetTicketTypesResponse {
+  repeated TicketTypeDetail ticket_types = 1;
+}

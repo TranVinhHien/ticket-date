@@ -83,6 +83,20 @@ func (r *fakeEventRepo) FindBySKU(_ context.Context, sku string) (*models.Ticket
 	return nil, dto.ErrTicketTypeNotFound
 }
 
+func (r *fakeEventRepo) FindTicketTypesByIDs(_ context.Context, ids []uuid.UUID) ([]*models.TicketType, error) {
+	var list []*models.TicketType
+	idMap := make(map[uuid.UUID]bool, len(ids))
+	for _, id := range ids {
+		idMap[id] = true
+	}
+	for _, tt := range r.ticketTypes {
+		if !tt.DeletedAt.Valid && idMap[tt.ID] {
+			list = append(list, tt)
+		}
+	}
+	return list, nil
+}
+
 func (r *fakeEventRepo) List(_ context.Context, query dto.EventQuery) ([]*models.Event, int64, error) {
 	var list []*models.Event
 	for _, e := range r.events {
@@ -363,5 +377,50 @@ func TestEventService_CRUD_With_TicketTypes(t *testing.T) {
 
 	if _, err := svc.GetByID(ctx, created.ID); err != dto.ErrEventNotFound {
 		t.Fatalf("expected ErrEventNotFound, got %v", err)
+	}
+}
+
+func TestEventService_GetTicketTypesByIDs(t *testing.T) {
+	eventRepo := newFakeEventRepo()
+	svc := NewEventService(eventRepo, newFakeOrganizerRepo(), newFakeVenueRepo())
+	ctx := context.Background()
+
+	tt1ID := uuid.New()
+	tt2ID := uuid.New()
+	eventID := uuid.New()
+
+	eventRepo.ticketTypes[tt1ID] = &models.TicketType{
+		ID:       tt1ID,
+		EventID:  eventID,
+		SKU:      "SKU-1",
+		Name:     "VIP",
+		Price:    500000,
+		Currency: "VND",
+	}
+	eventRepo.ticketTypes[tt2ID] = &models.TicketType{
+		ID:       tt2ID,
+		EventID:  eventID,
+		SKU:      "SKU-2",
+		Name:     "Standard",
+		Price:    200000,
+		Currency: "VND",
+	}
+
+	// 1. Fetch both
+	results, err := svc.GetTicketTypesByIDs(ctx, []uuid.UUID{tt1ID, tt2ID})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(results) != 2 {
+		t.Fatalf("expected 2 results, got %d", len(results))
+	}
+
+	// 2. Fetch empty
+	results, err = svc.GetTicketTypesByIDs(ctx, []uuid.UUID{})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(results) != 0 {
+		t.Fatalf("expected 0 results, got %d", len(results))
 	}
 }

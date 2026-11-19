@@ -8,19 +8,18 @@ import (
 )
 
 var (
-	ErrEmptyOrderItems   = errors.New("order must contain at least one item")
-	ErrInvalidQuantity   = errors.New("quantity must be greater than zero")
-	ErrInvalidUnitPrice  = errors.New("unit price cannot be negative")
-	ErrOrderNotFound     = errors.New("order not found")
-	ErrInvalidUserID     = errors.New("valid user id is required")
+	ErrEmptyOrderItems    = errors.New("order must contain at least one item")
+	ErrInvalidQuantity    = errors.New("quantity must be greater than zero")
+	ErrInvalidUnitPrice   = errors.New("unit price cannot be negative")
+	ErrOrderNotFound      = errors.New("order not found")
+	ErrInvalidUserID      = errors.New("valid user id is required")
+	ErrInsufficientStock  = errors.New("insufficient stock")
+	ErrTicketTypeNotFound = errors.New("ticket type not found")
 )
 
 type CreateOrderItemRequest struct {
-	TicketTypeID   uuid.UUID `json:"ticket_type_id" binding:"required"`
-	TicketTypeName string    `json:"ticket_type_name" binding:"required"`
-	Sku            string    `json:"sku" binding:"required"`
-	Quantity       int32     `json:"quantity" binding:"required,gt=0"`
-	UnitPrice      int64     `json:"unit_price" binding:"min=0"`
+	TicketTypeID uuid.UUID `json:"ticket_type_id" binding:"required"`
+	Quantity     int32     `json:"quantity" binding:"required,gt=0"`
 }
 
 type CreateOrderRequest struct {

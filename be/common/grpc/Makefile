@@ -3,7 +3,7 @@
 # Generate Go protobuf and gRPC stubs
 gen-proto:
 	@echo "Generating protobuf files..."
-	protoc --proto_path=proto --go_out=paths=source_relative:pb --go-grpc_out=paths=source_relative:pb proto/common/common.proto proto/inventory/inventory_service.proto
+	protoc --proto_path=proto --go_out=paths=source_relative:pb --go-grpc_out=paths=source_relative:pb proto/common/common.proto proto/inventory/inventory_service.proto proto/event/event_service.proto
 
 # Install protoc plugins for Go
 install-tools:

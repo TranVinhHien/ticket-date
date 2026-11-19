@@ -16,6 +16,7 @@ type IEventRepository interface {
 	FindByID(ctx context.Context, id uuid.UUID) (*models.Event, error)
 	FindBySlug(ctx context.Context, slug string) (*models.Event, error)
 	FindBySKU(ctx context.Context, sku string) (*models.TicketType, error)
+	FindTicketTypesByIDs(ctx context.Context, ids []uuid.UUID) ([]*models.TicketType, error)
 	List(ctx context.Context, query dto.EventQuery) ([]*models.Event, int64, error)
 	Update(ctx context.Context, event *models.Event) error
 	Delete(ctx context.Context, id uuid.UUID, deletedBy *uuid.UUID) error
@@ -89,6 +90,19 @@ func (r *EventRepository) FindBySKU(ctx context.Context, sku string) (*models.Ti
 		return nil, err
 	}
 	return &ticketType, nil
+}
+
+func (r *EventRepository) FindTicketTypesByIDs(ctx context.Context, ids []uuid.UUID) ([]*models.TicketType, error) {
+	var ticketTypes []*models.TicketType
+	if len(ids) == 0 {
+		return ticketTypes, nil
+	}
+	if err := r.db.WithContext(ctx).
+		Where("id IN ? AND deleted_at IS NULL", ids).
+		Find(&ticketTypes).Error; err != nil {
+		return nil, err
+	}
+	return ticketTypes, nil
 }
 
 func (r *EventRepository) List(ctx context.Context, query dto.EventQuery) ([]*models.Event, int64, error) {

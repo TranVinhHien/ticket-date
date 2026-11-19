@@ -1,6 +1,8 @@
 package grpcErrors
 
 import (
+	"strings"
+
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -43,4 +45,24 @@ func Unavailable(format string, args ...any) error {
 // FailedPrecondition returns a gRPC FailedPrecondition error (HTTP 412).
 func FailedPrecondition(format string, args ...any) error {
 	return status.Errorf(codes.FailedPrecondition, format, args...)
+}
+
+// InsufficientStock returns a gRPC FailedPrecondition error with INSUFFICIENT_STOCK prefix.
+func InsufficientStock(ticketTypeID string) error {
+	return status.Errorf(codes.FailedPrecondition, "INSUFFICIENT_STOCK: %s", ticketTypeID)
+}
+
+// IsInsufficientStock checks whether an error indicates insufficient stock and returns the ticket_type_id.
+func IsInsufficientStock(err error) (bool, string) {
+	if err == nil {
+		return false, ""
+	}
+	msg := Message(err)
+	if strings.HasPrefix(msg, "INSUFFICIENT_STOCK: ") {
+		return true, strings.TrimSpace(strings.TrimPrefix(msg, "INSUFFICIENT_STOCK: "))
+	}
+	if strings.Contains(msg, "INSUFFICIENT_STOCK") {
+		return true, msg
+	}
+	return false, ""
 }

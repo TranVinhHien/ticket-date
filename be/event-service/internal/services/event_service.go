@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"fmt"
+	"log"
 	"strings"
 	"time"
 
@@ -476,4 +477,15 @@ func (s *EventService) Update(ctx context.Context, id uuid.UUID, req dto.UpdateE
 
 func (s *EventService) Delete(ctx context.Context, id uuid.UUID, userCtx dto.CurrentUserContext) error {
 	return s.eventRepo.Delete(ctx, id, userCtx.UserID)
+}
+
+func (s *EventService) GetTicketTypesByIDs(ctx context.Context, ids []uuid.UUID) ([]*models.TicketType, error) {
+	log.Printf("[EventService.GetTicketTypesByIDs] Querying %d ticket types from DB: %v", len(ids), ids)
+	tts, err := s.eventRepo.FindTicketTypesByIDs(ctx, ids)
+	if err != nil {
+		log.Printf("[EventService.GetTicketTypesByIDs] Error querying ticket types: %v", err)
+		return nil, err
+	}
+	log.Printf("[EventService.GetTicketTypesByIDs] Successfully found %d ticket types in DB", len(tts))
+	return tts, nil
 }

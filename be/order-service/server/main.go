@@ -6,6 +6,9 @@ import (
 	"log"
 	"time"
 
+	grpcClient "github.com/TranVinhHien/ticket-date/be/common/grpc/client"
+	pbEvent "github.com/TranVinhHien/ticket-date/be/common/grpc/pb/event"
+	pbInventory "github.com/TranVinhHien/ticket-date/be/common/grpc/pb/inventory"
 	_ "github.com/TranVinhHien/ticket-date/be/order-service/docs"
 	"github.com/TranVinhHien/ticket-date/be/order-service/internal/cache"
 	"github.com/TranVinhHien/ticket-date/be/order-service/internal/config"
@@ -68,8 +71,42 @@ func main() {
 	// Initialize repositories
 	orderRepo := repository.NewOrderRepository(pool)
 
+	// Initialize gRPC client for inventory service
+	var inventoryClient pbInventory.InventoryServiceClient
+	if config.App.GRPCClient.InventoryHost != "" && config.App.GRPCClient.InventoryPort != 0 {
+		inventoryAddr := fmt.Sprintf("%s:%d", config.App.GRPCClient.InventoryHost, config.App.GRPCClient.InventoryPort)
+		conn, err := grpcClient.NewClientConn(
+			inventoryAddr,
+			grpcClient.WithTimeout(5*time.Second),
+			grpcClient.WithInsecure(),
+		)
+		if err != nil {
+			log.Printf("Warning: failed to connect to inventory gRPC server at %s: %v", inventoryAddr, err)
+		} else {
+			defer conn.Close()
+			inventoryClient = pbInventory.NewInventoryServiceClient(conn)
+		}
+	}
+
+	// Initialize gRPC client for event service
+	var eventClient pbEvent.EventServiceClient
+	if config.App.GRPCClient.EventHost != "" && config.App.GRPCClient.EventPort != 0 {
+		eventAddr := fmt.Sprintf("%s:%d", config.App.GRPCClient.EventHost, config.App.GRPCClient.EventPort)
+		eventConn, err := grpcClient.NewClientConn(
+			eventAddr,
+			grpcClient.WithTimeout(5*time.Second),
+			grpcClient.WithInsecure(),
+		)
+		if err != nil {
+			log.Printf("Warning: failed to connect to event gRPC server at %s: %v", eventAddr, err)
+		} else {
+			defer eventConn.Close()
+			eventClient = pbEvent.NewEventServiceClient(eventConn)
+		}
+	}
+
 	// Initialize services
-	orderService := services.NewOrderService(orderRepo, cacheEngine)
+	orderService := services.NewOrderService(orderRepo, cacheEngine, inventoryClient, eventClient)
 
 	// Initialize handlers
 	orderHandler := handlers.NewOrderHandler(orderService)
@@ -78,11 +115,7 @@ func main() {
 	r := router.SetupRouter(orderHandler)
 
 	// Start server
-	port := config.App.HttpServer.Port
-	if port == 0 {
-		port = 8080
-	}
-	address := fmt.Sprintf(":%d", port)
+	address := fmt.Sprintf(":%d", config.App.HttpServer.Port)
 	log.Printf("Server starting on %s", address)
 	if err := r.Run(address); err != nil {
 		log.Fatalf("Server stopped: %v", err)

@@ -150,7 +150,6 @@ func LoadConfig(path string) (*Config, error) {
 	v.SetDefault("app.name", "inventory")
 	v.SetDefault("app.version", "v1.0.0")
 	v.SetDefault("http_server.host", "0.0.0.0")
-	v.SetDefault("http_server.port", 8080)
 	v.SetDefault("http_server.mode", "debug")
 	v.SetDefault("http_server.log_level", "info")
 	v.SetDefault("cockroach_db.host", "localhost")

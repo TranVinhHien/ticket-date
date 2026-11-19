@@ -4,41 +4,19 @@ package inventory;
 
 option go_package = "github.com/TranVinhHien/ticket-date/be/common/grpc/pb/inventory;pbInventory";
 
-import "google/protobuf/timestamp.proto";
-
 service InventoryService {
-  rpc ReserveTickets(ReserveTicketsRequest) returns (ReserveTicketsResponse);
-  rpc ReleaseTickets(ReleaseTicketsRequest) returns (ReleaseTicketsResponse);
-  rpc ConfirmTickets(ConfirmTicketsRequest) returns (ConfirmTicketsResponse);
+  rpc DeductStock(DeductStockRequest) returns (DeductStockResponse);
 }
 
-message ReserveTicketsRequest {
-  string order_id = 1;
-  string event_id = 2;
-  repeated string seat_ids = 3;
-  int64 hold_duration_seconds = 4;
+message DeductItem {
+  string ticket_type_id = 1;
+  int32 quantity = 2;
 }
 
-message ReserveTicketsResponse {
-  string reservation_id = 1;
-  string status = 2;
-  google.protobuf.Timestamp expires_at = 3;
+message DeductStockRequest {
+  repeated DeductItem items = 1;
 }
 
-message ReleaseTicketsRequest {
-  string reservation_id = 1;
-  string order_id = 2;
-}
-
-message ReleaseTicketsResponse {
-  bool success = 1;
-}
-
-message ConfirmTicketsRequest {
-  string reservation_id = 1;
-  string order_id = 2;
-}
-
-message ConfirmTicketsResponse {
+message DeductStockResponse {
   bool success = 1;
 }

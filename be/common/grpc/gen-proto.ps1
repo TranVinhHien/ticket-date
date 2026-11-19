@@ -10,13 +10,13 @@ if (-not (Get-Command protoc -ErrorAction SilentlyContinue)) {
 }
 
 Write-Host "==> Ensuring output directories exist..." -ForegroundColor Cyan
-New-Item -ItemType Directory -Force -Path "pb/common", "pb/inventory" | Out-Null
+New-Item -ItemType Directory -Force -Path "pb/common", "pb/inventory", "pb/event" | Out-Null
 
 Write-Host "==> Generating Go protobuf files..." -ForegroundColor Cyan
 protoc --proto_path=proto `
        --go_out=paths=source_relative:pb `
        --go-grpc_out=paths=source_relative:pb `
-       proto/common/common.proto proto/inventory/inventory_service.proto
+       proto/common/common.proto proto/inventory/inventory_service.proto proto/event/event_service.proto
 
 if ($LASTEXITCODE -eq 0) {
     Write-Host "[SUCCESS] Protobuf files generated successfully in ./pb/" -ForegroundColor Green

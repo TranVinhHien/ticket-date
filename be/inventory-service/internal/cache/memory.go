@@ -259,3 +259,75 @@ func (c *memoryCache) ReleaseLock(ctx context.Context, key string) error {
 	c.mu.Unlock()
 	return nil
 }
+
+func (c *memoryCache) SetIntNX(ctx context.Context, key string, value int64, ttl time.Duration) (bool, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	item, exists := c.items[key]
+	if exists && !item.isExpired() {
+		return false, nil
+	}
+
+	effectiveTTL := ttl
+	var exp time.Time
+	if effectiveTTL > 0 {
+		exp = time.Now().Add(effectiveTTL)
+	}
+
+	c.items[key] = memoryItem{
+		value:     []byte(strconv.FormatInt(value, 10)),
+		expiresAt: exp,
+	}
+
+	return true, nil
+}
+
+func (c *memoryCache) DeductStockAtomic(ctx context.Context, items []DeductStockItem) (*DeductStockResult, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	if len(items) == 0 {
+		return &DeductStockResult{Status: DeductStatusOK}, nil
+	}
+
+	// 1. Check if all keys exist and are not expired
+	var missing []string
+	for _, item := range items {
+		cached, exists := c.items[item.Key]
+		if !exists || cached.isExpired() {
+			missing = append(missing, item.Key)
+		}
+	}
+	if len(missing) > 0 {
+		return &DeductStockResult{
+			Status:      DeductStatusMissing,
+			MissingKeys: missing,
+		}, nil
+	}
+
+	// 2. Check stock sufficiency for all keys
+	for _, item := range items {
+		cached := c.items[item.Key]
+		currentStock, err := strconv.ParseInt(string(cached.value), 10, 64)
+		if err != nil || currentStock < item.Quantity {
+			return &DeductStockResult{
+				Status:    DeductStatusInsufficient,
+				FailedKey: item.Key,
+			}, nil
+		}
+	}
+
+	// 3. Deduct stock for all keys
+	for _, item := range items {
+		cached := c.items[item.Key]
+		currentStock, _ := strconv.ParseInt(string(cached.value), 10, 64)
+		newStock := currentStock - item.Quantity
+		c.items[item.Key] = memoryItem{
+			value:     []byte(strconv.FormatInt(newStock, 10)),
+			expiresAt: cached.expiresAt,
+		}
+	}
+
+	return &DeductStockResult{Status: DeductStatusOK}, nil
+}

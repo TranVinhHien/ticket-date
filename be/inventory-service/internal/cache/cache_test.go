@@ -146,3 +146,90 @@ func TestMemoryCache_IntegerCounterOperations(t *testing.T) {
 		t.Fatalf("expected final val=35, got %d, err=%v", val, err)
 	}
 }
+
+func TestMemoryCache_SetIntNX(t *testing.T) {
+	c := cache.NewMemoryCache(10*time.Minute, 1*time.Minute)
+	ctx := context.Background()
+
+	// 1. First set should succeed
+	ok, err := c.SetIntNX(ctx, "inv:nx:1", 100, 5*time.Minute)
+	if err != nil || !ok {
+		t.Fatalf("expected SetIntNX to succeed on new key, got ok=%v, err=%v", ok, err)
+	}
+
+	// 2. Second set with same key should NOT overwrite
+	ok, err = c.SetIntNX(ctx, "inv:nx:1", 200, 5*time.Minute)
+	if err != nil || ok {
+		t.Fatalf("expected SetIntNX to return false for existing key, got ok=%v, err=%v", ok, err)
+	}
+
+	// 3. Value should remain 100
+	val, err := c.GetInt(ctx, "inv:nx:1")
+	if err != nil || val != 100 {
+		t.Fatalf("expected value to remain 100, got %d", val)
+	}
+}
+
+func TestMemoryCache_DeductStockAtomic(t *testing.T) {
+	c := cache.NewMemoryCache(10*time.Minute, 1*time.Minute)
+	ctx := context.Background()
+
+	_ = c.SetInt(ctx, "item:1", 10, 5*time.Minute)
+	_ = c.SetInt(ctx, "item:2", 20, 5*time.Minute)
+
+	// 1. Missing keys
+	res, err := c.DeductStockAtomic(ctx, []cache.DeductStockItem{
+		{Key: "item:1", Quantity: 2},
+		{Key: "item:3", Quantity: 5}, // not in cache
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if res.Status != cache.DeductStatusMissing || len(res.MissingKeys) != 1 || res.MissingKeys[0] != "item:3" {
+		t.Fatalf("expected missing item:3, got %+v", res)
+	}
+
+	// Verify nothing was deducted
+	v1, _ := c.GetInt(ctx, "item:1")
+	if v1 != 10 {
+		t.Fatalf("expected item:1 to remain 10, got %d", v1)
+	}
+
+	// 2. Insufficient stock
+	res, err = c.DeductStockAtomic(ctx, []cache.DeductStockItem{
+		{Key: "item:1", Quantity: 2},
+		{Key: "item:2", Quantity: 25}, // only 20 available!
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if res.Status != cache.DeductStatusInsufficient || res.FailedKey != "item:2" {
+		t.Fatalf("expected insufficient item:2, got %+v", res)
+	}
+
+	// Verify neither key was modified
+	v1, _ = c.GetInt(ctx, "item:1")
+	v2, _ := c.GetInt(ctx, "item:2")
+	if v1 != 10 || v2 != 20 {
+		t.Fatalf("expected 10 and 20, got %d and %d", v1, v2)
+	}
+
+	// 3. Successful atomic deduction
+	res, err = c.DeductStockAtomic(ctx, []cache.DeductStockItem{
+		{Key: "item:1", Quantity: 3},
+		{Key: "item:2", Quantity: 5},
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if res.Status != cache.DeductStatusOK {
+		t.Fatalf("expected status OK, got %+v", res)
+	}
+
+	// Verify both keys decremented atomically
+	v1, _ = c.GetInt(ctx, "item:1")
+	v2, _ = c.GetInt(ctx, "item:2")
+	if v1 != 7 || v2 != 15 {
+		t.Fatalf("expected 7 and 15, got %d and %d", v1, v2)
+	}
+}

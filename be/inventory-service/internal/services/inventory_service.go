@@ -4,8 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
+	"sort"
+	"strings"
 	"time"
 
+	grpcErrors "github.com/TranVinhHien/ticket-date/be/common/grpc/errors"
 	"github.com/TranVinhHien/ticket-date/be/inventory-service/internal/cache"
 	"github.com/TranVinhHien/ticket-date/be/inventory-service/internal/database/db"
 	"github.com/TranVinhHien/ticket-date/be/inventory-service/internal/handlers/dto"
@@ -18,6 +22,7 @@ type InventoryService interface {
 	CreateInventoryBatch(ctx context.Context, userID *uuid.UUID, req dto.CreateInventoryBatchRequest) ([]dto.InventoryResponse, error)
 	UpdateInventoryStockBatch(ctx context.Context, userID *uuid.UUID, req dto.UpdateInventoryBatchRequest) ([]dto.StockResponse, error)
 	GetCurrentStock(ctx context.Context, ticketTypeID uuid.UUID) (*dto.StockResponse, error)
+	DeductStock(ctx context.Context, req dto.DeductStockRequest) error
 }
 
 type inventoryService struct {
@@ -305,4 +310,171 @@ func (s *inventoryService) GetCurrentStock(ctx context.Context, ticketTypeID uui
 		AvailableQuantity: int32(available),
 		HasStock:          available > 0,
 	}, nil
+}
+
+// DeductStock atomically checks and deducts stock on Redis across multiple items.
+// If cache miss occurs, falls back to DB in a single batch query (no N+1 query),
+// populates Redis using SetIntNX (preventing overwrites of concurrent updates),
+// and retries the atomic check-and-decrement Lua script.
+func (s *inventoryService) DeductStock(ctx context.Context, req dto.DeductStockRequest) error {
+	log.Printf("[InventoryService.DeductStock] Received deduct request: %d items", len(req.Items))
+	// Step 1: Validate Request
+	if len(req.Items) == 0 {
+		log.Printf("[InventoryService.DeductStock] Validation failed: empty items")
+		return grpcErrors.InvalidArgument("items cannot be empty")
+	}
+
+	aggregated := make(map[uuid.UUID]int64)
+	for _, item := range req.Items {
+		if item.TicketTypeID == uuid.Nil {
+			log.Printf("[InventoryService.DeductStock] Validation failed: nil ticket_type_id")
+			return grpcErrors.InvalidArgument("ticket_type_id must be a valid non-nil UUID")
+		}
+		if item.Quantity <= 0 {
+			log.Printf("[InventoryService.DeductStock] Validation failed: quantity <= 0 for ticket %s", item.TicketTypeID)
+			return grpcErrors.InvalidArgument("quantity must be greater than 0 for ticket_type_id: %s", item.TicketTypeID)
+		}
+		aggregated[item.TicketTypeID] += int64(item.Quantity)
+	}
+
+	// Deterministic sorting of ticketTypeIDs to prevent any lock order inversion
+	sortedIDs := make([]uuid.UUID, 0, len(aggregated))
+	for id := range aggregated {
+		sortedIDs = append(sortedIDs, id)
+	}
+	sort.Slice(sortedIDs, func(i, j int) bool {
+		return sortedIDs[i].String() < sortedIDs[j].String()
+	})
+
+	deductItems := make([]cache.DeductStockItem, len(sortedIDs))
+	for i, id := range sortedIDs {
+		deductItems[i] = cache.DeductStockItem{
+			Key:      stockAvailableCacheKey(id),
+			Quantity: aggregated[id],
+		}
+	}
+
+	log.Printf("[InventoryService.DeductStock] Starting Redis Lua atomic deduction for items=%+v", deductItems)
+
+	// Step 2 & 3: Redis Transaction (Lua script) with DB Fallback (Step 4)
+	const maxRetries = 3
+	for attempt := 0; attempt < maxRetries; attempt++ {
+		log.Printf("[InventoryService.DeductStock] Attempt %d/%d Redis Lua deduction", attempt+1, maxRetries)
+		res, err := s.cache.DeductStockAtomic(ctx, deductItems)
+		if err != nil {
+			log.Printf("[InventoryService.DeductStock] Redis Lua execution error: %v", err)
+			return grpcErrors.Internal("cache deduct stock error: %v", err)
+		}
+
+		switch res.Status {
+		case cache.DeductStatusOK:
+			log.Printf("[InventoryService.DeductStock] Successfully deducted stock atomically on Redis")
+			return nil
+
+		case cache.DeductStatusInsufficient:
+			failedID := strings.TrimPrefix(res.FailedKey, "inventory:available:")
+			log.Printf("[InventoryService.DeductStock] Insufficient stock on Redis for ticket_type_id=%s", failedID)
+			return grpcErrors.InsufficientStock(failedID)
+
+		case cache.DeductStatusMissing:
+			log.Printf("[InventoryService.DeductStock] Cache miss detected for keys=%v, falling back to database", res.MissingKeys)
+			if err := s.initializeMissingStock(ctx, res.MissingKeys); err != nil {
+				log.Printf("[InventoryService.DeductStock] Failed to initialize missing stock from DB: %v", err)
+				return err
+			}
+			log.Printf("[InventoryService.DeductStock] Successfully initialized missing keys in Redis, retrying deduction")
+			continue
+		}
+	}
+
+	log.Printf("[InventoryService.DeductStock] Failed to deduct stock after %d retries", maxRetries)
+	return grpcErrors.Internal("failed to deduct stock after retries")
+}
+
+// initializeMissingStock queries DB in a single batch query (avoiding N+1 query)
+// and initializes Redis with SetIntNX to prevent overwriting newer concurrent stock updates.
+func (s *inventoryService) initializeMissingStock(ctx context.Context, missingKeys []string) error {
+	log.Printf("[InventoryService.initializeMissingStock] Processing missing keys: %v", missingKeys)
+	missingIDs := make([]uuid.UUID, 0, len(missingKeys))
+	for _, k := range missingKeys {
+		idStr := strings.TrimPrefix(k, "inventory:available:")
+		parsed, err := uuid.Parse(idStr)
+		if err == nil {
+			missingIDs = append(missingIDs, parsed)
+		}
+	}
+
+	if len(missingIDs) == 0 {
+		log.Printf("[InventoryService.initializeMissingStock] Error: failed to parse any missing keys")
+		return grpcErrors.Internal("failed to parse missing cache keys")
+	}
+
+	// Sort missing IDs to acquire distributed locks in deterministic order
+	sort.Slice(missingIDs, func(i, j int) bool {
+		return missingIDs[i].String() < missingIDs[j].String()
+	})
+
+	// Acquire distributed locks to prevent Cache Stampede
+	var lockedKeys []string
+	for _, id := range missingIDs {
+		lockKey := cache.ProLockKeyItem(id)
+		acquired, lockErr := s.cache.AcquireLock(ctx, lockKey, 5*time.Second)
+		if lockErr == nil && acquired {
+			lockedKeys = append(lockedKeys, lockKey)
+		}
+	}
+	defer func() {
+		for _, lk := range lockedKeys {
+			_ = s.cache.ReleaseLock(ctx, lk)
+		}
+	}()
+
+	// Double-check if keys became present while acquiring locks
+	stillMissing := make([]uuid.UUID, 0, len(missingIDs))
+	for _, id := range missingIDs {
+		exists, _ := s.cache.Exists(ctx, stockAvailableCacheKey(id))
+		if !exists {
+			stillMissing = append(stillMissing, id)
+		}
+	}
+
+	if len(stillMissing) == 0 {
+		log.Printf("[InventoryService.initializeMissingStock] Keys were already populated by concurrent request")
+		return nil
+	}
+
+	log.Printf("[InventoryService.initializeMissingStock] Querying DB for %d still missing IDs: %v", len(stillMissing), stillMissing)
+	// Batch query Database for all still-missing IDs in ONE single query (avoid N+1 query!)
+	inventories, err := s.repo.Queries().GetInventoriesByTicketTypeIDs(ctx, stillMissing)
+	if err != nil {
+		log.Printf("[InventoryService.initializeMissingStock] DB batch query error: %v", err)
+		return grpcErrors.Internal("database query inventory error: %v", err)
+	}
+
+	foundMap := make(map[uuid.UUID]db.TicketInventory, len(inventories))
+	for _, inv := range inventories {
+		foundMap[inv.TicketTypeID] = inv
+	}
+
+	// Check if any ticket_type_id was not found in DB
+	for _, id := range stillMissing {
+		if _, found := foundMap[id]; !found {
+			log.Printf("[InventoryService.initializeMissingStock] Ticket type %s not found in database", id)
+			return grpcErrors.NotFound("inventory for ticket_type_id", id)
+		}
+	}
+
+	// Synchronize stock from Database to Redis using SetIntNX
+	for _, inv := range inventories {
+		available := int64(inv.TotalQuantity - (inv.HeldQuantity + inv.SoldQuantity))
+		if available < 0 {
+			available = 0
+		}
+		cacheKey := stockAvailableCacheKey(inv.TicketTypeID)
+		// SetIntNX ensures we never overwrite newer stock updated by another concurrent request
+		_, _ = s.cache.SetIntNX(ctx, cacheKey, available, 0)
+		log.Printf("[InventoryService.initializeMissingStock] Synchronized stock to Redis: key=%s, available=%d", cacheKey, available)
+	}
+
+	return nil
 }

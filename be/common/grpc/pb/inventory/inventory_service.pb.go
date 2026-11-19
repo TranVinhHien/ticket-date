@@ -9,7 +9,6 @@ package pbInventory
 import (
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
-	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
@@ -22,30 +21,28 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-type ReserveTicketsRequest struct {
-	state               protoimpl.MessageState `protogen:"open.v1"`
-	OrderId             string                 `protobuf:"bytes,1,opt,name=order_id,json=orderId,proto3" json:"order_id,omitempty"`
-	EventId             string                 `protobuf:"bytes,2,opt,name=event_id,json=eventId,proto3" json:"event_id,omitempty"`
-	SeatIds             []string               `protobuf:"bytes,3,rep,name=seat_ids,json=seatIds,proto3" json:"seat_ids,omitempty"`
-	HoldDurationSeconds int64                  `protobuf:"varint,4,opt,name=hold_duration_seconds,json=holdDurationSeconds,proto3" json:"hold_duration_seconds,omitempty"`
-	unknownFields       protoimpl.UnknownFields
-	sizeCache           protoimpl.SizeCache
+type DeductItem struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	TicketTypeId  string                 `protobuf:"bytes,1,opt,name=ticket_type_id,json=ticketTypeId,proto3" json:"ticket_type_id,omitempty"`
+	Quantity      int32                  `protobuf:"varint,2,opt,name=quantity,proto3" json:"quantity,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
-func (x *ReserveTicketsRequest) Reset() {
-	*x = ReserveTicketsRequest{}
+func (x *DeductItem) Reset() {
+	*x = DeductItem{}
 	mi := &file_inventory_inventory_service_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *ReserveTicketsRequest) String() string {
+func (x *DeductItem) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*ReserveTicketsRequest) ProtoMessage() {}
+func (*DeductItem) ProtoMessage() {}
 
-func (x *ReserveTicketsRequest) ProtoReflect() protoreflect.Message {
+func (x *DeductItem) ProtoReflect() protoreflect.Message {
 	mi := &file_inventory_inventory_service_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -57,62 +54,46 @@ func (x *ReserveTicketsRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use ReserveTicketsRequest.ProtoReflect.Descriptor instead.
-func (*ReserveTicketsRequest) Descriptor() ([]byte, []int) {
+// Deprecated: Use DeductItem.ProtoReflect.Descriptor instead.
+func (*DeductItem) Descriptor() ([]byte, []int) {
 	return file_inventory_inventory_service_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *ReserveTicketsRequest) GetOrderId() string {
+func (x *DeductItem) GetTicketTypeId() string {
 	if x != nil {
-		return x.OrderId
+		return x.TicketTypeId
 	}
 	return ""
 }
 
-func (x *ReserveTicketsRequest) GetEventId() string {
+func (x *DeductItem) GetQuantity() int32 {
 	if x != nil {
-		return x.EventId
-	}
-	return ""
-}
-
-func (x *ReserveTicketsRequest) GetSeatIds() []string {
-	if x != nil {
-		return x.SeatIds
-	}
-	return nil
-}
-
-func (x *ReserveTicketsRequest) GetHoldDurationSeconds() int64 {
-	if x != nil {
-		return x.HoldDurationSeconds
+		return x.Quantity
 	}
 	return 0
 }
 
-type ReserveTicketsResponse struct {
+type DeductStockRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	ReservationId string                 `protobuf:"bytes,1,opt,name=reservation_id,json=reservationId,proto3" json:"reservation_id,omitempty"`
-	Status        string                 `protobuf:"bytes,2,opt,name=status,proto3" json:"status,omitempty"`
-	ExpiresAt     *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=expires_at,json=expiresAt,proto3" json:"expires_at,omitempty"`
+	Items         []*DeductItem          `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *ReserveTicketsResponse) Reset() {
-	*x = ReserveTicketsResponse{}
+func (x *DeductStockRequest) Reset() {
+	*x = DeductStockRequest{}
 	mi := &file_inventory_inventory_service_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *ReserveTicketsResponse) String() string {
+func (x *DeductStockRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*ReserveTicketsResponse) ProtoMessage() {}
+func (*DeductStockRequest) ProtoMessage() {}
 
-func (x *ReserveTicketsResponse) ProtoReflect() protoreflect.Message {
+func (x *DeductStockRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_inventory_inventory_service_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -124,54 +105,39 @@ func (x *ReserveTicketsResponse) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use ReserveTicketsResponse.ProtoReflect.Descriptor instead.
-func (*ReserveTicketsResponse) Descriptor() ([]byte, []int) {
+// Deprecated: Use DeductStockRequest.ProtoReflect.Descriptor instead.
+func (*DeductStockRequest) Descriptor() ([]byte, []int) {
 	return file_inventory_inventory_service_proto_rawDescGZIP(), []int{1}
 }
 
-func (x *ReserveTicketsResponse) GetReservationId() string {
+func (x *DeductStockRequest) GetItems() []*DeductItem {
 	if x != nil {
-		return x.ReservationId
-	}
-	return ""
-}
-
-func (x *ReserveTicketsResponse) GetStatus() string {
-	if x != nil {
-		return x.Status
-	}
-	return ""
-}
-
-func (x *ReserveTicketsResponse) GetExpiresAt() *timestamppb.Timestamp {
-	if x != nil {
-		return x.ExpiresAt
+		return x.Items
 	}
 	return nil
 }
 
-type ReleaseTicketsRequest struct {
+type DeductStockResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	ReservationId string                 `protobuf:"bytes,1,opt,name=reservation_id,json=reservationId,proto3" json:"reservation_id,omitempty"`
-	OrderId       string                 `protobuf:"bytes,2,opt,name=order_id,json=orderId,proto3" json:"order_id,omitempty"`
+	Success       bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *ReleaseTicketsRequest) Reset() {
-	*x = ReleaseTicketsRequest{}
+func (x *DeductStockResponse) Reset() {
+	*x = DeductStockResponse{}
 	mi := &file_inventory_inventory_service_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *ReleaseTicketsRequest) String() string {
+func (x *DeductStockResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*ReleaseTicketsRequest) ProtoMessage() {}
+func (*DeductStockResponse) ProtoMessage() {}
 
-func (x *ReleaseTicketsRequest) ProtoReflect() protoreflect.Message {
+func (x *DeductStockResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_inventory_inventory_service_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -183,159 +149,12 @@ func (x *ReleaseTicketsRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use ReleaseTicketsRequest.ProtoReflect.Descriptor instead.
-func (*ReleaseTicketsRequest) Descriptor() ([]byte, []int) {
+// Deprecated: Use DeductStockResponse.ProtoReflect.Descriptor instead.
+func (*DeductStockResponse) Descriptor() ([]byte, []int) {
 	return file_inventory_inventory_service_proto_rawDescGZIP(), []int{2}
 }
 
-func (x *ReleaseTicketsRequest) GetReservationId() string {
-	if x != nil {
-		return x.ReservationId
-	}
-	return ""
-}
-
-func (x *ReleaseTicketsRequest) GetOrderId() string {
-	if x != nil {
-		return x.OrderId
-	}
-	return ""
-}
-
-type ReleaseTicketsResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Success       bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *ReleaseTicketsResponse) Reset() {
-	*x = ReleaseTicketsResponse{}
-	mi := &file_inventory_inventory_service_proto_msgTypes[3]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *ReleaseTicketsResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*ReleaseTicketsResponse) ProtoMessage() {}
-
-func (x *ReleaseTicketsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_inventory_inventory_service_proto_msgTypes[3]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use ReleaseTicketsResponse.ProtoReflect.Descriptor instead.
-func (*ReleaseTicketsResponse) Descriptor() ([]byte, []int) {
-	return file_inventory_inventory_service_proto_rawDescGZIP(), []int{3}
-}
-
-func (x *ReleaseTicketsResponse) GetSuccess() bool {
-	if x != nil {
-		return x.Success
-	}
-	return false
-}
-
-type ConfirmTicketsRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	ReservationId string                 `protobuf:"bytes,1,opt,name=reservation_id,json=reservationId,proto3" json:"reservation_id,omitempty"`
-	OrderId       string                 `protobuf:"bytes,2,opt,name=order_id,json=orderId,proto3" json:"order_id,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *ConfirmTicketsRequest) Reset() {
-	*x = ConfirmTicketsRequest{}
-	mi := &file_inventory_inventory_service_proto_msgTypes[4]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *ConfirmTicketsRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*ConfirmTicketsRequest) ProtoMessage() {}
-
-func (x *ConfirmTicketsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_inventory_inventory_service_proto_msgTypes[4]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use ConfirmTicketsRequest.ProtoReflect.Descriptor instead.
-func (*ConfirmTicketsRequest) Descriptor() ([]byte, []int) {
-	return file_inventory_inventory_service_proto_rawDescGZIP(), []int{4}
-}
-
-func (x *ConfirmTicketsRequest) GetReservationId() string {
-	if x != nil {
-		return x.ReservationId
-	}
-	return ""
-}
-
-func (x *ConfirmTicketsRequest) GetOrderId() string {
-	if x != nil {
-		return x.OrderId
-	}
-	return ""
-}
-
-type ConfirmTicketsResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Success       bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *ConfirmTicketsResponse) Reset() {
-	*x = ConfirmTicketsResponse{}
-	mi := &file_inventory_inventory_service_proto_msgTypes[5]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *ConfirmTicketsResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*ConfirmTicketsResponse) ProtoMessage() {}
-
-func (x *ConfirmTicketsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_inventory_inventory_service_proto_msgTypes[5]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use ConfirmTicketsResponse.ProtoReflect.Descriptor instead.
-func (*ConfirmTicketsResponse) Descriptor() ([]byte, []int) {
-	return file_inventory_inventory_service_proto_rawDescGZIP(), []int{5}
-}
-
-func (x *ConfirmTicketsResponse) GetSuccess() bool {
+func (x *DeductStockResponse) GetSuccess() bool {
 	if x != nil {
 		return x.Success
 	}
@@ -346,31 +165,17 @@ var File_inventory_inventory_service_proto protoreflect.FileDescriptor
 
 const file_inventory_inventory_service_proto_rawDesc = "" +
 	"\n" +
-	"!inventory/inventory_service.proto\x12\tinventory\x1a\x1fgoogle/protobuf/timestamp.proto\"\x9c\x01\n" +
-	"\x15ReserveTicketsRequest\x12\x19\n" +
-	"\border_id\x18\x01 \x01(\tR\aorderId\x12\x19\n" +
-	"\bevent_id\x18\x02 \x01(\tR\aeventId\x12\x19\n" +
-	"\bseat_ids\x18\x03 \x03(\tR\aseatIds\x122\n" +
-	"\x15hold_duration_seconds\x18\x04 \x01(\x03R\x13holdDurationSeconds\"\x92\x01\n" +
-	"\x16ReserveTicketsResponse\x12%\n" +
-	"\x0ereservation_id\x18\x01 \x01(\tR\rreservationId\x12\x16\n" +
-	"\x06status\x18\x02 \x01(\tR\x06status\x129\n" +
+	"!inventory/inventory_service.proto\x12\tinventory\"N\n" +
 	"\n" +
-	"expires_at\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\texpiresAt\"Y\n" +
-	"\x15ReleaseTicketsRequest\x12%\n" +
-	"\x0ereservation_id\x18\x01 \x01(\tR\rreservationId\x12\x19\n" +
-	"\border_id\x18\x02 \x01(\tR\aorderId\"2\n" +
-	"\x16ReleaseTicketsResponse\x12\x18\n" +
-	"\asuccess\x18\x01 \x01(\bR\asuccess\"Y\n" +
-	"\x15ConfirmTicketsRequest\x12%\n" +
-	"\x0ereservation_id\x18\x01 \x01(\tR\rreservationId\x12\x19\n" +
-	"\border_id\x18\x02 \x01(\tR\aorderId\"2\n" +
-	"\x16ConfirmTicketsResponse\x12\x18\n" +
-	"\asuccess\x18\x01 \x01(\bR\asuccess2\x97\x02\n" +
-	"\x10InventoryService\x12U\n" +
-	"\x0eReserveTickets\x12 .inventory.ReserveTicketsRequest\x1a!.inventory.ReserveTicketsResponse\x12U\n" +
-	"\x0eReleaseTickets\x12 .inventory.ReleaseTicketsRequest\x1a!.inventory.ReleaseTicketsResponse\x12U\n" +
-	"\x0eConfirmTickets\x12 .inventory.ConfirmTicketsRequest\x1a!.inventory.ConfirmTicketsResponseBMZKgithub.com/TranVinhHien/ticket-date/be/common/grpc/pb/inventory;pbInventoryb\x06proto3"
+	"DeductItem\x12$\n" +
+	"\x0eticket_type_id\x18\x01 \x01(\tR\fticketTypeId\x12\x1a\n" +
+	"\bquantity\x18\x02 \x01(\x05R\bquantity\"A\n" +
+	"\x12DeductStockRequest\x12+\n" +
+	"\x05items\x18\x01 \x03(\v2\x15.inventory.DeductItemR\x05items\"/\n" +
+	"\x13DeductStockResponse\x12\x18\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess2`\n" +
+	"\x10InventoryService\x12L\n" +
+	"\vDeductStock\x12\x1d.inventory.DeductStockRequest\x1a\x1e.inventory.DeductStockResponseBMZKgithub.com/TranVinhHien/ticket-date/be/common/grpc/pb/inventory;pbInventoryb\x06proto3"
 
 var (
 	file_inventory_inventory_service_proto_rawDescOnce sync.Once
@@ -384,26 +189,18 @@ func file_inventory_inventory_service_proto_rawDescGZIP() []byte {
 	return file_inventory_inventory_service_proto_rawDescData
 }
 
-var file_inventory_inventory_service_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
+var file_inventory_inventory_service_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
 var file_inventory_inventory_service_proto_goTypes = []any{
-	(*ReserveTicketsRequest)(nil),  // 0: inventory.ReserveTicketsRequest
-	(*ReserveTicketsResponse)(nil), // 1: inventory.ReserveTicketsResponse
-	(*ReleaseTicketsRequest)(nil),  // 2: inventory.ReleaseTicketsRequest
-	(*ReleaseTicketsResponse)(nil), // 3: inventory.ReleaseTicketsResponse
-	(*ConfirmTicketsRequest)(nil),  // 4: inventory.ConfirmTicketsRequest
-	(*ConfirmTicketsResponse)(nil), // 5: inventory.ConfirmTicketsResponse
-	(*timestamppb.Timestamp)(nil),  // 6: google.protobuf.Timestamp
+	(*DeductItem)(nil),          // 0: inventory.DeductItem
+	(*DeductStockRequest)(nil),  // 1: inventory.DeductStockRequest
+	(*DeductStockResponse)(nil), // 2: inventory.DeductStockResponse
 }
 var file_inventory_inventory_service_proto_depIdxs = []int32{
-	6, // 0: inventory.ReserveTicketsResponse.expires_at:type_name -> google.protobuf.Timestamp
-	0, // 1: inventory.InventoryService.ReserveTickets:input_type -> inventory.ReserveTicketsRequest
-	2, // 2: inventory.InventoryService.ReleaseTickets:input_type -> inventory.ReleaseTicketsRequest
-	4, // 3: inventory.InventoryService.ConfirmTickets:input_type -> inventory.ConfirmTicketsRequest
-	1, // 4: inventory.InventoryService.ReserveTickets:output_type -> inventory.ReserveTicketsResponse
-	3, // 5: inventory.InventoryService.ReleaseTickets:output_type -> inventory.ReleaseTicketsResponse
-	5, // 6: inventory.InventoryService.ConfirmTickets:output_type -> inventory.ConfirmTicketsResponse
-	4, // [4:7] is the sub-list for method output_type
-	1, // [1:4] is the sub-list for method input_type
+	0, // 0: inventory.DeductStockRequest.items:type_name -> inventory.DeductItem
+	1, // 1: inventory.InventoryService.DeductStock:input_type -> inventory.DeductStockRequest
+	2, // 2: inventory.InventoryService.DeductStock:output_type -> inventory.DeductStockResponse
+	2, // [2:3] is the sub-list for method output_type
+	1, // [1:2] is the sub-list for method input_type
 	1, // [1:1] is the sub-list for extension type_name
 	1, // [1:1] is the sub-list for extension extendee
 	0, // [0:1] is the sub-list for field type_name
@@ -420,7 +217,7 @@ func file_inventory_inventory_service_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_inventory_inventory_service_proto_rawDesc), len(file_inventory_inventory_service_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   6,
+			NumMessages:   3,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

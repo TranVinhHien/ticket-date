@@ -67,27 +67,20 @@ func main() {
 ### Accessing User Identity & Request ID in Server Handlers:
 
 ```go
-func (h *InventoryHandler) ReserveTickets(ctx context.Context, req *pbInventory.ReserveTicketsRequest) (*pbInventory.ReserveTicketsResponse, error) {
+func (h *InventoryHandler) DeductStock(ctx context.Context, req *pbInventory.DeductStockRequest) (*pbInventory.DeductStockResponse, error) {
     // 1. Get Request ID
     reqID := grpcContext.GetRequestID(ctx)
 
     // 2. Get Authenticated User UUID
     userUUID, ok := grpcContext.GetUserID(ctx)
-    if !ok {
-        return nil, grpcErrors.Unauthenticated("user identity missing")
-    }
 
-    // 3. Get User Roles
-    roles := grpcContext.GetUserRoles(ctx)
-
-    // Business logic...
+    // Business logic with Redis Lua script...
     if !hasStock {
-        return nil, grpcErrors.FailedPrecondition("selected seats are no longer available")
+        return nil, grpcErrors.InsufficientStock(failedTicketTypeID)
     }
 
-    return &pbInventory.ReserveTicketsResponse{
-        ReservationId: "res-12345",
-        Status:        "RESERVED",
+    return &pbInventory.DeductStockResponse{
+        Success: true,
     }, nil
 }
 ```
@@ -135,10 +128,10 @@ func CreateOrderHandler(c *gin.Context) {
     // to the downstream gRPC service via outgoing metadata
     ctx := grpcContext.FromGinContext(c)
 
-    res, err := inventoryClient.ReserveTickets(ctx, &pbInventory.ReserveTicketsRequest{
-        OrderId: "order-1",
-        EventId: "event-99",
-        SeatIds: []string{"A1", "A2"},
+    res, err := inventoryClient.DeductStock(ctx, &pbInventory.DeductStockRequest{
+        Items: []*pbInventory.DeductItem{
+            {TicketTypeId: "ticket-1", Quantity: 2},
+        },
     })
 
     if err != nil {
@@ -165,6 +158,7 @@ Standard error constructors mapping to gRPC status codes:
 | `grpcErrors.NotFound(...)` | `NotFound` | `404 Not Found` |
 | `grpcErrors.AlreadyExists(...)` | `AlreadyExists` | `409 Conflict` |
 | `grpcErrors.FailedPrecondition(...)`| `FailedPrecondition`| `412 Precondition Failed` |
+| `grpcErrors.InsufficientStock(...)` | `FailedPrecondition`| `412 Precondition Failed` |
 | `grpcErrors.Unavailable(...)` | `Unavailable` | `503 Service Unavailable` |
 | `grpcErrors.Internal(...)` | `Internal` | `500 Internal Server Error` |
 

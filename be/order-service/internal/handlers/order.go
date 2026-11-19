@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"errors"
+	"log"
 	"net/http"
 
 	"github.com/TranVinhHien/ticket-date/be/order-service/internal/handlers/dto"
@@ -32,20 +33,24 @@ func NewOrderHandler(service services.OrderService) *OrderHandler {
 // @Failure 500 {object} dto.Response
 // @Router /api/v1/orders [post]
 func (h *OrderHandler) CreateOrder(c *gin.Context) {
+	log.Printf("[OrderHandler.CreateOrder] Received POST /api/v1/orders request from %s", c.ClientIP())
 	userID := middleware.GetUserID(c)
 	if userID == nil || *userID == uuid.Nil {
+		log.Printf("[OrderHandler.CreateOrder] Unauthorized: missing or invalid user ID")
 		respondError(c, http.StatusUnauthorized, errors.New("unauthorized: missing or invalid user id"))
 		return
 	}
 
 	var req dto.CreateOrderRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
+		log.Printf("[OrderHandler.CreateOrder] Bad request JSON bind error: %v", err)
 		respondError(c, http.StatusBadRequest, err)
 		return
 	}
 
 	result, err := h.service.CreateOrder(c.Request.Context(), *userID, req)
 	if err != nil {
+		log.Printf("[OrderHandler.CreateOrder] Service returned error: %v", err)
 		switch {
 		case errors.Is(err, dto.ErrEmptyOrderItems),
 			errors.Is(err, dto.ErrInvalidQuantity),
@@ -53,12 +58,17 @@ func (h *OrderHandler) CreateOrder(c *gin.Context) {
 			respondError(c, http.StatusBadRequest, err)
 		case errors.Is(err, dto.ErrInvalidUserID):
 			respondError(c, http.StatusUnauthorized, err)
+		case errors.Is(err, dto.ErrTicketTypeNotFound):
+			respondError(c, http.StatusNotFound, err)
+		case errors.Is(err, dto.ErrInsufficientStock):
+			respondError(c, http.StatusConflict, err)
 		default:
 			respondError(c, http.StatusInternalServerError, err)
 		}
 		return
 	}
 
+	log.Printf("[OrderHandler.CreateOrder] Responding 201 Created for order %s", result.OrderCode)
 	respond(c, http.StatusCreated, "order created successfully", result)
 }
 

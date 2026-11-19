@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	grpcErrors "github.com/TranVinhHien/ticket-date/be/common/grpc/errors"
 	"github.com/TranVinhHien/ticket-date/be/inventory-service/internal/cache"
 	"github.com/TranVinhHien/ticket-date/be/inventory-service/internal/database/db"
 	"github.com/TranVinhHien/ticket-date/be/inventory-service/internal/handlers/dto"
@@ -14,6 +15,7 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"google.golang.org/grpc/codes"
 )
 
 // mockDBTX implements db.DBTX for testing
@@ -515,5 +517,186 @@ func TestGetCurrentStock_WithCacheHitAndInvalidation(t *testing.T) {
 	}
 	if dbGetStockQueryCount != 2 {
 		t.Fatalf("expected DB GetStock count to be 2 after invalidation, got %d", dbGetStockQueryCount)
+	}
+}
+
+func TestDeductStock_Validation(t *testing.T) {
+	svc := services.NewInventoryService(&testRepo{dbtx: &mockDBTX{}}, nil)
+	ctx := context.Background()
+
+	// 1. Empty items
+	err := svc.DeductStock(ctx, dto.DeductStockRequest{Items: []dto.DeductStockItemDTO{}})
+	if grpcErrors.Code(err) != codes.InvalidArgument {
+		t.Fatalf("expected InvalidArgument on empty items, got %v", err)
+	}
+
+	// 2. Nil ticket_type_id
+	err = svc.DeductStock(ctx, dto.DeductStockRequest{
+		Items: []dto.DeductStockItemDTO{
+			{TicketTypeID: uuid.Nil, Quantity: 1},
+		},
+	})
+	if grpcErrors.Code(err) != codes.InvalidArgument {
+		t.Fatalf("expected InvalidArgument on nil UUID, got %v", err)
+	}
+
+	// 3. Zero or negative quantity
+	validID := uuid.New()
+	err = svc.DeductStock(ctx, dto.DeductStockRequest{
+		Items: []dto.DeductStockItemDTO{
+			{TicketTypeID: validID, Quantity: 0},
+		},
+	})
+	if grpcErrors.Code(err) != codes.InvalidArgument {
+		t.Fatalf("expected InvalidArgument on 0 quantity, got %v", err)
+	}
+}
+
+func TestDeductStock_MergeDuplicates(t *testing.T) {
+	memCache := cache.NewMemoryCache(5*time.Minute, 1*time.Minute)
+	ticketID := uuid.New()
+	ctx := context.Background()
+
+	// Initialize stock = 10
+	_ = memCache.SetInt(ctx, "inventory:available:"+ticketID.String(), 10, 5*time.Minute)
+
+	svc := services.NewInventoryService(&testRepo{dbtx: &mockDBTX{}}, memCache)
+
+	// Send duplicate ticketID items: 4 + 3 = 7
+	err := svc.DeductStock(ctx, dto.DeductStockRequest{
+		Items: []dto.DeductStockItemDTO{
+			{TicketTypeID: ticketID, Quantity: 4},
+			{TicketTypeID: ticketID, Quantity: 3},
+		},
+	})
+	if err != nil {
+		t.Fatalf("unexpected error on deduplication: %v", err)
+	}
+
+	// Remaining stock should be 10 - 7 = 3
+	val, _ := memCache.GetInt(ctx, "inventory:available:"+ticketID.String())
+	if val != 3 {
+		t.Fatalf("expected stock 3 after merging duplicates, got %d", val)
+	}
+
+	// Requesting more than available after merge: 2 + 2 = 4 (> 3)
+	err = svc.DeductStock(ctx, dto.DeductStockRequest{
+		Items: []dto.DeductStockItemDTO{
+			{TicketTypeID: ticketID, Quantity: 2},
+			{TicketTypeID: ticketID, Quantity: 2},
+		},
+	})
+	if ok, id := grpcErrors.IsInsufficientStock(err); !ok || id != ticketID.String() {
+		t.Fatalf("expected INSUFFICIENT_STOCK for %s, got %v", ticketID, err)
+	}
+}
+
+func TestDeductStock_Atomicity_AllOrNothing(t *testing.T) {
+	memCache := cache.NewMemoryCache(5*time.Minute, 1*time.Minute)
+	ticketID1 := uuid.New()
+	ticketID2 := uuid.New()
+	ctx := context.Background()
+
+	// ticket1 has 10, ticket2 has 2
+	_ = memCache.SetInt(ctx, "inventory:available:"+ticketID1.String(), 10, 5*time.Minute)
+	_ = memCache.SetInt(ctx, "inventory:available:"+ticketID2.String(), 2, 5*time.Minute)
+
+	svc := services.NewInventoryService(&testRepo{dbtx: &mockDBTX{}}, memCache)
+
+	// Request ticket1: 5 (sufficient), ticket2: 5 (INSUFFICIENT)
+	err := svc.DeductStock(ctx, dto.DeductStockRequest{
+		Items: []dto.DeductStockItemDTO{
+			{TicketTypeID: ticketID1, Quantity: 5},
+			{TicketTypeID: ticketID2, Quantity: 5},
+		},
+	})
+
+	if ok, id := grpcErrors.IsInsufficientStock(err); !ok || id != ticketID2.String() {
+		t.Fatalf("expected INSUFFICIENT_STOCK for ticket2, got %v", err)
+	}
+
+	// Atomicity check: ticket1 MUST NOT be deducted! Stock must remain 10
+	val1, _ := memCache.GetInt(ctx, "inventory:available:"+ticketID1.String())
+	val2, _ := memCache.GetInt(ctx, "inventory:available:"+ticketID2.String())
+	if val1 != 10 {
+		t.Fatalf("atomicity violated! ticket1 stock changed to %d (expected 10)", val1)
+	}
+	if val2 != 2 {
+		t.Fatalf("ticket2 stock changed to %d (expected 2)", val2)
+	}
+}
+
+func TestDeductStock_CacheMiss_FallbackToDB(t *testing.T) {
+	memCache := cache.NewMemoryCache(5*time.Minute, 1*time.Minute)
+	ticketID1 := uuid.New()
+	ticketID2 := uuid.New()
+	now := time.Now().UTC()
+	ctx := context.Background()
+
+	dbBatchQueried := false
+	mock := &mockDBTX{
+		queryFunc: func(ctx context.Context, query string, args ...interface{}) (pgx.Rows, error) {
+			dbBatchQueried = true
+			return &mockRows{
+				rows: [][]interface{}{
+					// id, ticket_type_id, total, held, sold, ...
+					{uuid.New(), ticketID1, int32(50), int32(5), int32(5), nil, now, nil, now, nil, nil},
+					{uuid.New(), ticketID2, int32(30), int32(0), int32(10), nil, now, nil, now, nil, nil},
+				},
+			}, nil
+		},
+	}
+
+	svc := services.NewInventoryService(&testRepo{dbtx: mock}, memCache)
+
+	// Neither key exists in cache yet! Cache miss triggers fallback to DB
+	err := svc.DeductStock(ctx, dto.DeductStockRequest{
+		Items: []dto.DeductStockItemDTO{
+			{TicketTypeID: ticketID1, Quantity: 10},
+			{TicketTypeID: ticketID2, Quantity: 5},
+		},
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if !dbBatchQueried {
+		t.Fatalf("expected DB fallback batch query to be executed on cache miss")
+	}
+
+	// Available in DB was:
+	// ticket1: 50 - (5 + 5) = 40. Deducted 10 -> 30 remaining
+	// ticket2: 30 - (0 + 10) = 20. Deducted 5 -> 15 remaining
+	v1, _ := memCache.GetInt(ctx, "inventory:available:"+ticketID1.String())
+	v2, _ := memCache.GetInt(ctx, "inventory:available:"+ticketID2.String())
+	if v1 != 30 {
+		t.Fatalf("expected ticket1 stock 30 in cache, got %d", v1)
+	}
+	if v2 != 15 {
+		t.Fatalf("expected ticket2 stock 15 in cache, got %d", v2)
+	}
+}
+
+func TestDeductStock_CacheMiss_NotFoundInDB(t *testing.T) {
+	memCache := cache.NewMemoryCache(5*time.Minute, 1*time.Minute)
+	ticketID := uuid.New()
+	ctx := context.Background()
+
+	mock := &mockDBTX{
+		queryFunc: func(ctx context.Context, query string, args ...interface{}) (pgx.Rows, error) {
+			// DB returns empty rows (not found)
+			return &mockRows{rows: [][]interface{}{}}, nil
+		},
+	}
+
+	svc := services.NewInventoryService(&testRepo{dbtx: mock}, memCache)
+
+	err := svc.DeductStock(ctx, dto.DeductStockRequest{
+		Items: []dto.DeductStockItemDTO{
+			{TicketTypeID: ticketID, Quantity: 1},
+		},
+	})
+	if grpcErrors.Code(err) != codes.NotFound {
+		t.Fatalf("expected NotFound on DB cache miss, got %v", err)
 	}
 }

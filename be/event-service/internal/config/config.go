@@ -25,6 +25,7 @@ type AppMetadataConfig struct {
 type HttpServerConfig struct {
 	Host         string   `mapstructure:"host"`
 	Port         int      `mapstructure:"port"`
+	GRPCPort     int      `mapstructure:"grpc_port"`
 	AllowOrigins []string `mapstructure:"allow_origins"`
 	AllowMethods []string `mapstructure:"allow_methods"`
 	AllowHeaders []string `mapstructure:"allow_headers"`
@@ -109,7 +110,6 @@ func LoadConfig(path string) (*Config, error) {
 	v.SetDefault("app.name", "event-service")
 	v.SetDefault("app.version", "v1.0.0")
 	v.SetDefault("http_server.host", "0.0.0.0")
-	v.SetDefault("http_server.port", 8081)
 	v.SetDefault("http_server.mode", "debug")
 	v.SetDefault("http_server.log_level", "info")
 	v.SetDefault("cockroach_db.host", "localhost")

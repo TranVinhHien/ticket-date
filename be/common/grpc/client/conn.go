@@ -41,7 +41,7 @@ func NewClientConn(target string, opts ...Option) (*grpc.ClientConn, error) {
 		dialOpts = append(dialOpts, grpc.WithKeepaliveParams(keepalive.ClientParameters{
 			Time:                options.KeepAliveTime,
 			Timeout:             options.KeepAliveTimeout,
-			PermitWithoutStream: true,
+			PermitWithoutStream: false,
 		}))
 	}
 

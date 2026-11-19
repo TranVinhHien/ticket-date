@@ -19,18 +19,14 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	InventoryService_ReserveTickets_FullMethodName = "/inventory.InventoryService/ReserveTickets"
-	InventoryService_ReleaseTickets_FullMethodName = "/inventory.InventoryService/ReleaseTickets"
-	InventoryService_ConfirmTickets_FullMethodName = "/inventory.InventoryService/ConfirmTickets"
+	InventoryService_DeductStock_FullMethodName = "/inventory.InventoryService/DeductStock"
 )
 
 // InventoryServiceClient is the client API for InventoryService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type InventoryServiceClient interface {
-	ReserveTickets(ctx context.Context, in *ReserveTicketsRequest, opts ...grpc.CallOption) (*ReserveTicketsResponse, error)
-	ReleaseTickets(ctx context.Context, in *ReleaseTicketsRequest, opts ...grpc.CallOption) (*ReleaseTicketsResponse, error)
-	ConfirmTickets(ctx context.Context, in *ConfirmTicketsRequest, opts ...grpc.CallOption) (*ConfirmTicketsResponse, error)
+	DeductStock(ctx context.Context, in *DeductStockRequest, opts ...grpc.CallOption) (*DeductStockResponse, error)
 }
 
 type inventoryServiceClient struct {
@@ -41,30 +37,10 @@ func NewInventoryServiceClient(cc grpc.ClientConnInterface) InventoryServiceClie
 	return &inventoryServiceClient{cc}
 }
 
-func (c *inventoryServiceClient) ReserveTickets(ctx context.Context, in *ReserveTicketsRequest, opts ...grpc.CallOption) (*ReserveTicketsResponse, error) {
+func (c *inventoryServiceClient) DeductStock(ctx context.Context, in *DeductStockRequest, opts ...grpc.CallOption) (*DeductStockResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(ReserveTicketsResponse)
-	err := c.cc.Invoke(ctx, InventoryService_ReserveTickets_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *inventoryServiceClient) ReleaseTickets(ctx context.Context, in *ReleaseTicketsRequest, opts ...grpc.CallOption) (*ReleaseTicketsResponse, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(ReleaseTicketsResponse)
-	err := c.cc.Invoke(ctx, InventoryService_ReleaseTickets_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *inventoryServiceClient) ConfirmTickets(ctx context.Context, in *ConfirmTicketsRequest, opts ...grpc.CallOption) (*ConfirmTicketsResponse, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(ConfirmTicketsResponse)
-	err := c.cc.Invoke(ctx, InventoryService_ConfirmTickets_FullMethodName, in, out, cOpts...)
+	out := new(DeductStockResponse)
+	err := c.cc.Invoke(ctx, InventoryService_DeductStock_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -75,9 +51,7 @@ func (c *inventoryServiceClient) ConfirmTickets(ctx context.Context, in *Confirm
 // All implementations must embed UnimplementedInventoryServiceServer
 // for forward compatibility.
 type InventoryServiceServer interface {
-	ReserveTickets(context.Context, *ReserveTicketsRequest) (*ReserveTicketsResponse, error)
-	ReleaseTickets(context.Context, *ReleaseTicketsRequest) (*ReleaseTicketsResponse, error)
-	ConfirmTickets(context.Context, *ConfirmTicketsRequest) (*ConfirmTicketsResponse, error)
+	DeductStock(context.Context, *DeductStockRequest) (*DeductStockResponse, error)
 	mustEmbedUnimplementedInventoryServiceServer()
 }
 
@@ -88,14 +62,8 @@ type InventoryServiceServer interface {
 // pointer dereference when methods are called.
 type UnimplementedInventoryServiceServer struct{}
 
-func (UnimplementedInventoryServiceServer) ReserveTickets(context.Context, *ReserveTicketsRequest) (*ReserveTicketsResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "method ReserveTickets not implemented")
-}
-func (UnimplementedInventoryServiceServer) ReleaseTickets(context.Context, *ReleaseTicketsRequest) (*ReleaseTicketsResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "method ReleaseTickets not implemented")
-}
-func (UnimplementedInventoryServiceServer) ConfirmTickets(context.Context, *ConfirmTicketsRequest) (*ConfirmTicketsResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "method ConfirmTickets not implemented")
+func (UnimplementedInventoryServiceServer) DeductStock(context.Context, *DeductStockRequest) (*DeductStockResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method DeductStock not implemented")
 }
 func (UnimplementedInventoryServiceServer) mustEmbedUnimplementedInventoryServiceServer() {}
 func (UnimplementedInventoryServiceServer) testEmbeddedByValue()                          {}
@@ -118,56 +86,20 @@ func RegisterInventoryServiceServer(s grpc.ServiceRegistrar, srv InventoryServic
 	s.RegisterService(&InventoryService_ServiceDesc, srv)
 }
 
-func _InventoryService_ReserveTickets_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ReserveTicketsRequest)
+func _InventoryService_DeductStock_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeductStockRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(InventoryServiceServer).ReserveTickets(ctx, in)
+		return srv.(InventoryServiceServer).DeductStock(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: InventoryService_ReserveTickets_FullMethodName,
+		FullMethod: InventoryService_DeductStock_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(InventoryServiceServer).ReserveTickets(ctx, req.(*ReserveTicketsRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _InventoryService_ReleaseTickets_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ReleaseTicketsRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(InventoryServiceServer).ReleaseTickets(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: InventoryService_ReleaseTickets_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(InventoryServiceServer).ReleaseTickets(ctx, req.(*ReleaseTicketsRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _InventoryService_ConfirmTickets_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ConfirmTicketsRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(InventoryServiceServer).ConfirmTickets(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: InventoryService_ConfirmTickets_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(InventoryServiceServer).ConfirmTickets(ctx, req.(*ConfirmTicketsRequest))
+		return srv.(InventoryServiceServer).DeductStock(ctx, req.(*DeductStockRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -180,16 +112,8 @@ var InventoryService_ServiceDesc = grpc.ServiceDesc{
 	HandlerType: (*InventoryServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "ReserveTickets",
-			Handler:    _InventoryService_ReserveTickets_Handler,
-		},
-		{
-			MethodName: "ReleaseTickets",
-			Handler:    _InventoryService_ReleaseTickets_Handler,
-		},
-		{
-			MethodName: "ConfirmTickets",
-			Handler:    _InventoryService_ConfirmTickets_Handler,
+			MethodName: "DeductStock",
+			Handler:    _InventoryService_DeductStock_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

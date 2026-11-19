@@ -39,8 +39,10 @@ type HttpServerConfig struct {
 }
 
 type GRPCClientConfig struct {
-	Host string `mapstructure:"host"`
-	Port int    `mapstructure:"port"`
+	InventoryHost string `mapstructure:"inventory_host"`
+	InventoryPort int    `mapstructure:"inventory_port"`
+	EventHost     string `mapstructure:"event_host"`
+	EventPort     int    `mapstructure:"event_port"`
 }
 
 type LoggerConfig struct {
@@ -150,7 +152,6 @@ func LoadConfig(path string) (*Config, error) {
 	v.SetDefault("app.name", "order")
 	v.SetDefault("app.version", "v1.0.0")
 	v.SetDefault("http_server.host", "0.0.0.0")
-	v.SetDefault("http_server.port", 8080)
 	v.SetDefault("http_server.mode", "debug")
 	v.SetDefault("http_server.log_level", "info")
 	v.SetDefault("cockroach_db.host", "localhost")
@@ -192,6 +193,10 @@ func LoadConfig(path string) (*Config, error) {
 	_ = v.BindEnv("redis.port", "REDIS_PORT")
 	_ = v.BindEnv("redis.password", "REDIS_PASSWORD")
 	_ = v.BindEnv("redis.db", "REDIS_DB")
+	_ = v.BindEnv("grpc_client.inventory_host", "INVENTORY_GRPC_HOST")
+	_ = v.BindEnv("grpc_client.inventory_port", "INVENTORY_GRPC_PORT")
+	_ = v.BindEnv("grpc_client.event_host", "EVENT_GRPC_HOST")
+	_ = v.BindEnv("grpc_client.event_port", "EVENT_GRPC_PORT")
 	_ = v.BindEnv("aws.region", "AWS_REGION")
 	_ = v.BindEnv("aws.access_key_id", "AWS_ACCESS_KEY_ID")
 	_ = v.BindEnv("aws.secret_access_key", "AWS_SECRET_ACCESS_KEY")

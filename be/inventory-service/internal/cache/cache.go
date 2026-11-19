@@ -40,4 +40,30 @@ type Cache interface {
 	// Distributed Lock operations (for Cache Stampede / Breakdown prevention)
 	AcquireLock(ctx context.Context, key string, ttl time.Duration) (bool, error)
 	ReleaseLock(ctx context.Context, key string) error
+
+	// Atomic stock operations
+	SetIntNX(ctx context.Context, key string, value int64, ttl time.Duration) (bool, error)
+	DeductStockAtomic(ctx context.Context, items []DeductStockItem) (*DeductStockResult, error)
+}
+
+// DeductStockItem represents an individual stock item to deduct.
+type DeductStockItem struct {
+	Key      string
+	Quantity int64
+}
+
+// DeductStatus indicates the outcome of atomic deduction.
+type DeductStatus int
+
+const (
+	DeductStatusOK DeductStatus = iota
+	DeductStatusMissing
+	DeductStatusInsufficient
+)
+
+// DeductStockResult contains the result of an atomic deduction execution.
+type DeductStockResult struct {
+	Status      DeductStatus
+	FailedKey   string
+	MissingKeys []string
 }

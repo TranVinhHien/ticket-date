@@ -203,3 +203,110 @@ func (c *redisCache) ReleaseLock(ctx context.Context, key string) error {
 
 	return nil
 }
+
+func (c *redisCache) SetIntNX(ctx context.Context, key string, value int64, ttl time.Duration) (bool, error) {
+	if c.client == nil {
+		return false, fmt.Errorf("redis client is nil")
+	}
+
+	ok, err := c.client.SetNX(ctx, key, value, ttl).Result()
+	if err != nil {
+		return false, fmt.Errorf("redis setnx int %s: %w", key, err)
+	}
+
+	return ok, nil
+}
+
+var deductStockLua = redis.NewScript(`
+local missing = {}
+for i = 1, #KEYS do
+    local exists = redis.call('EXISTS', KEYS[i])
+    if exists == 0 then
+        table.insert(missing, KEYS[i])
+    end
+end
+
+if #missing > 0 then
+    local res = { 1 }
+    for i = 1, #missing do
+        table.insert(res, missing[i])
+    end
+    return res
+end
+
+for i = 1, #KEYS do
+    local val = redis.call('GET', KEYS[i])
+    local current_stock = tonumber(val)
+    local req_qty = tonumber(ARGV[i])
+    if current_stock == nil or current_stock < req_qty then
+        return { 2, KEYS[i] }
+    end
+end
+
+for i = 1, #KEYS do
+    local req_qty = tonumber(ARGV[i])
+    redis.call('DECRBY', KEYS[i], req_qty)
+end
+
+return { 0 }
+`)
+
+func (c *redisCache) DeductStockAtomic(ctx context.Context, items []DeductStockItem) (*DeductStockResult, error) {
+	if c.client == nil {
+		return nil, fmt.Errorf("redis client is nil")
+	}
+	if len(items) == 0 {
+		return &DeductStockResult{Status: DeductStatusOK}, nil
+	}
+
+	keys := make([]string, len(items))
+	args := make([]interface{}, len(items))
+	for i, item := range items {
+		keys[i] = item.Key
+		args[i] = item.Quantity
+	}
+
+	rawRes, err := deductStockLua.Run(ctx, c.client, keys, args...).Result()
+	if err != nil {
+		return nil, fmt.Errorf("redis lua deduct stock: %w", err)
+	}
+
+	slice, ok := rawRes.([]interface{})
+	if !ok || len(slice) == 0 {
+		return nil, fmt.Errorf("unexpected lua result format: %v", rawRes)
+	}
+
+	statusVal, ok := slice[0].(int64)
+	if !ok {
+		return nil, fmt.Errorf("unexpected status code in lua result: %v", slice[0])
+	}
+
+	switch statusVal {
+	case 0:
+		return &DeductStockResult{Status: DeductStatusOK}, nil
+	case 1:
+		missing := make([]string, 0, len(slice)-1)
+		for _, v := range slice[1:] {
+			if s, ok := v.(string); ok {
+				missing = append(missing, s)
+			}
+		}
+		return &DeductStockResult{
+			Status:      DeductStatusMissing,
+			MissingKeys: missing,
+		}, nil
+	case 2:
+		failedKey := ""
+		if len(slice) > 1 {
+			if s, ok := slice[1].(string); ok {
+				failedKey = s
+			}
+		}
+		return &DeductStockResult{
+			Status:    DeductStatusInsufficient,
+			FailedKey: failedKey,
+		}, nil
+	default:
+		return nil, fmt.Errorf("unknown lua status code: %d", statusVal)
+	}
+}
