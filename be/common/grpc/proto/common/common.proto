@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+package common;
+
+option go_package = "github.com/TranVinhHien/ticket-date/be/common/grpc/pb/common;pbCommon";
+
+message PaginationRequest {
+  int32 page = 1;
+  int32 limit = 2;
+  string sort = 3;
+  string order = 4;
+}
+
+message PaginationResponse {
+  int64 total = 1;
+  int32 page = 2;
+  int32 limit = 3;
+  int32 total_pages = 4;
+}
+
+message ErrorResponse {
+  string code = 1;
+  string message = 2;
+  repeated string details = 3;
+}

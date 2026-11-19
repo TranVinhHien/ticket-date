@@ -25,6 +25,13 @@ description: "Guidelines and rules for the shared foundational library module co
 - **`pagination`**: Unified pagination metadata and request parameter parsers.
 - **`httpclient`**: Resilient internal HTTP client with timeout and header injection capabilities.
 - **`middleware`**: Shared Gin middleware functions.
+- **`grpc`**: Reusable gRPC framework containing:
+  - `grpc/context`: Seamless conversion between Gin/Go Context and gRPC Metadata.
+  - `grpc/interceptor`: Standardized Unary and Stream interceptors (Recovery, Trace, Auth, Zerolog logging).
+  - `grpc/client`: Managed connection factory (`NewClientConn`) with KeepAlive, timeout, and interceptors.
+  - `grpc/errors`: Standard gRPC error builders and bidirectional HTTP status mappers.
+  - `grpc/helper`: Utilities for Protobuf `structpb` and `timestamppb`.
+  - `grpc/proto` & `grpc/pb`: Centralized protobuf definitions and generated stubs.
 
 ---
 

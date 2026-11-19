@@ -1,0 +1,39 @@
+meta {
+  name: Create Order
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{order_direct_url}}/api/v1/orders
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  X-User-ID: a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11
+}
+
+body:json {
+  {
+    "currency": "VND",
+    "items": [
+      {
+        "ticket_type_id": "{{ticket_type_id}}",
+        "ticket_type_name": "VIP Standing Zone A",
+        "sku": "SS27-VIP-ZONEA",
+        "quantity": 2,
+        "unit_price": 2500000
+      }
+    ]
+  }
+}
+
+script:post-response {
+  const body = res.getBody();
+  if (body && body.data && body.data.id) {
+    bru.setVar("order_id", body.data.id);
+    console.log("Saved order_id:", body.data.id);
+  }
+}

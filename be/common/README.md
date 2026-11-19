@@ -178,3 +178,17 @@ err := client.Put(ctx, "/path", requestPayload, &resultDTO)
 // DELETE
 err := client.Delete(ctx, "/path", &resultDTO)
 ```
+
+---
+
+## 5. gRPC Framework (`grpc`)
+
+The `grpc` package provides an end-to-end gRPC foundation for inter-service communication across microservices:
+- **`grpc/client`**: Connection factory (`NewClientConn`) with built-in keepalive, timeout, and automatic interceptors.
+- **`grpc/context`**: Metadata and context propagation utilities (`FromGinContext`, `GetRequestID`, `GetUserID`, `GetUserRoles`).
+- **`grpc/interceptor`**: Production-ready interceptors (Panic Recovery, Trace ID, User Identity extraction, Zerolog latency logging).
+- **`grpc/errors`**: Standard gRPC error constructors and HTTP status code mapping (`ToHTTPStatus`).
+- **`grpc/helper`**: Conversions for `structpb.Struct` and `timestamppb.Timestamp`.
+
+For complete code examples and server/client setup guides, see [grpc/README.md](file:///c:/Users/ADMIN/project/ticket-date/be/common/grpc/README.md).
+
