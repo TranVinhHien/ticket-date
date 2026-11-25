@@ -37,6 +37,8 @@ const (
 type OrderService interface {
 	CreateOrder(ctx context.Context, userID uuid.UUID, req dto.CreateOrderRequest) (*dto.OrderResponse, error)
 	GetOrderByID(ctx context.Context, id uuid.UUID) (*dto.OrderResponse, error)
+	GetOrderByIDForUser(ctx context.Context, id uuid.UUID, userID uuid.UUID) (*dto.OrderResponse, error)
+	ListMyOrders(ctx context.Context, userID uuid.UUID, page, limit int) ([]dto.OrderResponse, int64, error)
 }
 
 type orderService struct {
@@ -82,7 +84,7 @@ func (s *orderService) CreateOrder(ctx context.Context, userID uuid.UUID, req dt
 	}
 
 	idempotencyKey := strings.TrimSpace(req.IdempotencyKey)
-	if len(idempotencyKey) > MaxIdempotencyKeyLen || len(idempotencyKey) == 0 {
+	if len(idempotencyKey) > MaxIdempotencyKeyLen {
 		log.Printf("[OrderService.CreateOrder] Validation failed: idempotency key exceeds %d chars", MaxIdempotencyKeyLen)
 		return nil, dto.ErrInvalidIdempotencyKey
 	}
@@ -311,7 +313,7 @@ func (s *orderService) CreateOrder(ctx context.Context, userID uuid.UUID, req dt
 
 		// 4. Insert into outbox_event
 		_, err = q.CreateOutboxEvent(ctx, db.CreateOutboxEventParams{
-			AggregateID: req.IdempotencyKey,
+			AggregateID: createdOrder.ID.String(),
 			EventType:   EventOrderCreated,
 			Payload:     string(payloadBytes),
 			Status:      0,
@@ -443,4 +445,93 @@ func (s *orderService) GetOrderByID(ctx context.Context, id uuid.UUID) (*dto.Ord
 		CreatedAt:   order.CreatedAt,
 		UpdatedAt:   order.UpdatedAt,
 	}, nil
+}
+
+func (s *orderService) GetOrderByIDForUser(ctx context.Context, id uuid.UUID, userID uuid.UUID) (*dto.OrderResponse, error) {
+	order, err := s.GetOrderByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	if order.UserID != userID {
+		return nil, dto.ErrOrderNotFound
+	}
+	return order, nil
+}
+
+func (s *orderService) ListMyOrders(ctx context.Context, userID uuid.UUID, page, limit int) ([]dto.OrderResponse, int64, error) {
+	queries := s.repo.Queries()
+	if queries == nil {
+		return nil, 0, errors.New("database queries not initialized")
+	}
+
+	if page <= 0 {
+		page = 1
+	}
+	if limit <= 0 {
+		limit = 10
+	}
+	if limit > 100 {
+		limit = 100
+	}
+	offset := (page - 1) * limit
+
+	total, err := queries.CountOrdersByUserID(ctx, userID)
+	if err != nil {
+		log.Printf("[OrderService.ListMyOrders] Error counting orders for user %s: %v", userID, err)
+		return nil, 0, fmt.Errorf("count orders: %w", err)
+	}
+
+	if total == 0 {
+		return []dto.OrderResponse{}, 0, nil
+	}
+
+	orders, err := queries.ListOrdersByUserID(ctx, db.ListOrdersByUserIDParams{
+		UserID: userID,
+		Limit:  int32(limit),
+		Offset: int32(offset),
+	})
+	if err != nil {
+		log.Printf("[OrderService.ListMyOrders] Error querying orders for user %s: %v", userID, err)
+		return nil, 0, fmt.Errorf("list orders: %w", err)
+	}
+
+	orderResponses := make([]dto.OrderResponse, len(orders))
+	for i, order := range orders {
+		items, err := queries.GetOrderItemsByOrderID(ctx, order.ID)
+		if err != nil {
+			log.Printf("[OrderService.ListMyOrders] Error querying order items for order %s: %v", order.ID, err)
+			return nil, 0, fmt.Errorf("get order items: %w", err)
+		}
+
+		itemResponses := make([]dto.OrderItemResponse, len(items))
+		for j, item := range items {
+			itemResponses[j] = dto.OrderItemResponse{
+				ID:             item.ID,
+				OrderID:        item.OrderID,
+				TicketTypeID:   item.TicketTypeID,
+				TicketTypeName: item.TicketTypeName,
+				Sku:            item.Sku,
+				Quantity:       item.Quantity,
+				UnitPrice:      item.UnitPrice,
+				Subtotal:       item.Subtotal,
+				CreatedAt:      item.CreatedAt,
+			}
+		}
+
+		orderResponses[i] = dto.OrderResponse{
+			ID:          order.ID,
+			UserID:      order.UserID,
+			OrderCode:   order.OrderCode,
+			TotalAmount: order.TotalAmount,
+			Currency:    order.Currency,
+			Status:      order.Status,
+			ExpiresAt:   order.ExpiresAt,
+			PaidAt:      order.PaidAt,
+			Items:       itemResponses,
+			CreatedAt:   order.CreatedAt,
+			UpdatedAt:   order.UpdatedAt,
+		}
+	}
+
+	return orderResponses, total, nil
 }

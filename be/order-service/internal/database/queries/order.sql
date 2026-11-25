@@ -60,6 +60,16 @@ WHERE order_code = $1 AND deleted_at IS NULL;
 SELECT * FROM order_items
 WHERE order_id = $1 AND deleted_at IS NULL;
 
+-- name: ListOrdersByUserID :many
+SELECT * FROM orders
+WHERE user_id = $1 AND deleted_at IS NULL
+ORDER BY created_at DESC
+LIMIT $2 OFFSET $3;
+
+-- name: CountOrdersByUserID :one
+SELECT COUNT(*) FROM orders
+WHERE user_id = $1 AND deleted_at IS NULL;
+
 -- name: AcquireOrderIdempotencyKey :one
 WITH ins AS (
     INSERT INTO order_idempotency_keys (

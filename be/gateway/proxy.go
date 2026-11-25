@@ -33,6 +33,16 @@ func NewReverseProxyHandler(targetURL string, logger *zerolog.Logger) (*ReverseP
 		req.Host = parsedURL.Host
 	}
 
+	proxy.ModifyResponse = func(resp *http.Response) error {
+		// Strip upstream CORS headers to avoid duplication with Gateway's CORS headers
+		resp.Header.Del("Access-Control-Allow-Origin")
+		resp.Header.Del("Access-Control-Allow-Methods")
+		resp.Header.Del("Access-Control-Allow-Headers")
+		resp.Header.Del("Access-Control-Allow-Credentials")
+		resp.Header.Del("Access-Control-Expose-Headers")
+		return nil
+	}
+
 	proxy.ErrorHandler = func(w http.ResponseWriter, req *http.Request, err error) {
 		if logger != nil {
 			logger.Error().

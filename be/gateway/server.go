@@ -66,13 +66,19 @@ func corsMiddleware(cfg *config.Config) gin.HandlerFunc {
 		allowMethods = strings.Join(cfg.HttpServer.AllowMethods, ", ")
 	}
 
-	allowHeaders := "Origin, Content-Type, Accept, Authorization, X-Request-ID, X-User-ID, X-User-Email, X-User-Roles"
+	allowHeaders := "Origin, Content-Type, Accept, Authorization, X-Request-ID, X-User-ID, X-User-Email, X-User-Roles, Idempotency-Key"
 	if len(cfg.HttpServer.AllowHeaders) > 0 {
 		allowHeaders = strings.Join(cfg.HttpServer.AllowHeaders, ", ")
 	}
 
 	return func(c *gin.Context) {
-		c.Writer.Header().Set("Access-Control-Allow-Origin", allowOrigins)
+		origin := c.GetHeader("Origin")
+		if origin != "" {
+			c.Writer.Header().Set("Access-Control-Allow-Origin", origin)
+			c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
+		} else {
+			c.Writer.Header().Set("Access-Control-Allow-Origin", allowOrigins)
+		}
 		c.Writer.Header().Set("Access-Control-Allow-Methods", allowMethods)
 		c.Writer.Header().Set("Access-Control-Allow-Headers", allowHeaders)
 		if c.Request.Method == http.MethodOptions {

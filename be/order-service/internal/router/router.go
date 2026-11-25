@@ -65,6 +65,7 @@ func SetupRouter(
 		orders := api.Group("/orders")
 		{
 			orders.POST("", orderHandler.CreateOrder)
+			orders.GET("", orderHandler.ListOrders)
 			orders.GET("/:id", orderHandler.GetOrderByID)
 		}
 	}

@@ -26,7 +26,7 @@ type CreateOrderItemRequest struct {
 }
 
 type CreateOrderRequest struct {
-	IdempotencyKey string `json:"idempotency_key,omitempty" binding:"required"`
+	IdempotencyKey string `json:"idempotency_key,omitempty"`
 
 	Currency string                   `json:"currency"`
 	Items    []CreateOrderItemRequest `json:"items" binding:"required,min=1,dive"`

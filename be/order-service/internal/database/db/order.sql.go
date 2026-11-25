@@ -274,6 +274,66 @@ func (q *Queries) GetOrderItemsByOrderID(ctx context.Context, orderID uuid.UUID)
 	return items, nil
 }
 
+const countOrdersByUserID = `-- name: CountOrdersByUserID :one
+SELECT COUNT(*) FROM orders
+WHERE user_id = $1 AND deleted_at IS NULL
+`
+
+func (q *Queries) CountOrdersByUserID(ctx context.Context, userID uuid.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, countOrdersByUserID, userID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const listOrdersByUserID = `-- name: ListOrdersByUserID :many
+SELECT id, user_id, order_code, total_amount, currency, status, expires_at, paid_at, created_by, created_at, updated_by, updated_at, deleted_by, deleted_at FROM orders
+WHERE user_id = $1 AND deleted_at IS NULL
+ORDER BY created_at DESC
+LIMIT $2 OFFSET $3
+`
+
+type ListOrdersByUserIDParams struct {
+	UserID uuid.UUID `json:"user_id"`
+	Limit  int32     `json:"limit"`
+	Offset int32     `json:"offset"`
+}
+
+func (q *Queries) ListOrdersByUserID(ctx context.Context, arg ListOrdersByUserIDParams) ([]Order, error) {
+	rows, err := q.db.Query(ctx, listOrdersByUserID, arg.UserID, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Order
+	for rows.Next() {
+		var i Order
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.OrderCode,
+			&i.TotalAmount,
+			&i.Currency,
+			&i.Status,
+			&i.ExpiresAt,
+			&i.PaidAt,
+			&i.CreatedBy,
+			&i.CreatedAt,
+			&i.UpdatedBy,
+			&i.UpdatedAt,
+			&i.DeletedBy,
+			&i.DeletedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const acquireOrderIdempotencyKey = `-- name: AcquireOrderIdempotencyKey :one
 WITH ins AS (
     INSERT INTO order_idempotency_keys (

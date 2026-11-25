@@ -32,6 +32,17 @@ func (m *mockOrderService) GetOrderByID(ctx context.Context, id uuid.UUID) (*dto
 	return &dto.OrderResponse{ID: id}, nil
 }
 
+func (m *mockOrderService) GetOrderByIDForUser(ctx context.Context, id uuid.UUID, userID uuid.UUID) (*dto.OrderResponse, error) {
+	if m.getOrderByIDFn != nil {
+		return m.getOrderByIDFn(ctx, id)
+	}
+	return &dto.OrderResponse{ID: id, UserID: userID}, nil
+}
+
+func (m *mockOrderService) ListMyOrders(ctx context.Context, userID uuid.UUID, page, limit int) ([]dto.OrderResponse, int64, error) {
+	return []dto.OrderResponse{}, 0, nil
+}
+
 func setupTestRouter(svc *mockOrderService) *gin.Engine {
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
@@ -46,7 +57,22 @@ func setupTestRouter(svc *mockOrderService) *gin.Engine {
 		}
 		handler.CreateOrder(c)
 	})
-	r.GET("/orders/:id", handler.GetOrderByID)
+	r.GET("/orders", func(c *gin.Context) {
+		if uidStr := c.GetHeader("X-User-ID"); uidStr != "" {
+			if uid, err := uuid.Parse(uidStr); err == nil {
+				c.Set("user_id", uid)
+			}
+		}
+		handler.ListOrders(c)
+	})
+	r.GET("/orders/:id", func(c *gin.Context) {
+		if uidStr := c.GetHeader("X-User-ID"); uidStr != "" {
+			if uid, err := uuid.Parse(uidStr); err == nil {
+				c.Set("user_id", uid)
+			}
+		}
+		handler.GetOrderByID(c)
+	})
 	return r
 }
 
@@ -185,6 +211,33 @@ func TestOrderHandler_CreateOrder(t *testing.T) {
 		r.ServeHTTP(w, req)
 		if w.Code != http.StatusBadRequest {
 			t.Errorf("expected 400, got %d", w.Code)
+		}
+	})
+}
+
+func TestOrderHandler_ListOrders(t *testing.T) {
+	userID := uuid.New()
+	svc := &mockOrderService{}
+	r := setupTestRouter(svc)
+
+	t.Run("unauthorized when no user_id in context", func(t *testing.T) {
+		req, _ := http.NewRequest(http.MethodGet, "/orders", nil)
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, req)
+
+		if w.Code != http.StatusUnauthorized {
+			t.Errorf("expected 401, got %d", w.Code)
+		}
+	})
+
+	t.Run("success when user_id is provided", func(t *testing.T) {
+		req, _ := http.NewRequest(http.MethodGet, "/orders?page=1&limit=10", nil)
+		req.Header.Set("X-User-ID", userID.String())
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, req)
+
+		if w.Code != http.StatusOK {
+			t.Errorf("expected 200, got %d", w.Code)
 		}
 	})
 }
