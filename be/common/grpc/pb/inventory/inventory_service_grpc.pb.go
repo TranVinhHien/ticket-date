@@ -19,7 +19,8 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	InventoryService_DeductStock_FullMethodName = "/inventory.InventoryService/DeductStock"
+	InventoryService_DeductStock_FullMethodName  = "/inventory.InventoryService/DeductStock"
+	InventoryService_RestoreStock_FullMethodName = "/inventory.InventoryService/RestoreStock"
 )
 
 // InventoryServiceClient is the client API for InventoryService service.
@@ -27,6 +28,7 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type InventoryServiceClient interface {
 	DeductStock(ctx context.Context, in *DeductStockRequest, opts ...grpc.CallOption) (*DeductStockResponse, error)
+	RestoreStock(ctx context.Context, in *RestoreStockRequest, opts ...grpc.CallOption) (*RestoreStockResponse, error)
 }
 
 type inventoryServiceClient struct {
@@ -47,11 +49,22 @@ func (c *inventoryServiceClient) DeductStock(ctx context.Context, in *DeductStoc
 	return out, nil
 }
 
+func (c *inventoryServiceClient) RestoreStock(ctx context.Context, in *RestoreStockRequest, opts ...grpc.CallOption) (*RestoreStockResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RestoreStockResponse)
+	err := c.cc.Invoke(ctx, InventoryService_RestoreStock_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // InventoryServiceServer is the server API for InventoryService service.
 // All implementations must embed UnimplementedInventoryServiceServer
 // for forward compatibility.
 type InventoryServiceServer interface {
 	DeductStock(context.Context, *DeductStockRequest) (*DeductStockResponse, error)
+	RestoreStock(context.Context, *RestoreStockRequest) (*RestoreStockResponse, error)
 	mustEmbedUnimplementedInventoryServiceServer()
 }
 
@@ -64,6 +77,9 @@ type UnimplementedInventoryServiceServer struct{}
 
 func (UnimplementedInventoryServiceServer) DeductStock(context.Context, *DeductStockRequest) (*DeductStockResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method DeductStock not implemented")
+}
+func (UnimplementedInventoryServiceServer) RestoreStock(context.Context, *RestoreStockRequest) (*RestoreStockResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method RestoreStock not implemented")
 }
 func (UnimplementedInventoryServiceServer) mustEmbedUnimplementedInventoryServiceServer() {}
 func (UnimplementedInventoryServiceServer) testEmbeddedByValue()                          {}
@@ -104,6 +120,24 @@ func _InventoryService_DeductStock_Handler(srv interface{}, ctx context.Context,
 	return interceptor(ctx, in, info, handler)
 }
 
+func _InventoryService_RestoreStock_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RestoreStockRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(InventoryServiceServer).RestoreStock(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: InventoryService_RestoreStock_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(InventoryServiceServer).RestoreStock(ctx, req.(*RestoreStockRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // InventoryService_ServiceDesc is the grpc.ServiceDesc for InventoryService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -114,6 +148,10 @@ var InventoryService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "DeductStock",
 			Handler:    _InventoryService_DeductStock_Handler,
+		},
+		{
+			MethodName: "RestoreStock",
+			Handler:    _InventoryService_RestoreStock_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

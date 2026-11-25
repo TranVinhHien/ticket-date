@@ -116,7 +116,7 @@ func TestProxyRouteForwardingWithAuthAndPermissions(t *testing.T) {
 		Gateway: config.GatewayConfig{
 			Routes: []config.GatewayRouteConfig{
 				{
-					Prefix:       "/api/v1/library",
+					Prefix:       "/api/v1/orders",
 					Target:       mockUpstream.URL,
 					AuthRequired: true,
 				},
@@ -129,7 +129,7 @@ func TestProxyRouteForwardingWithAuthAndPermissions(t *testing.T) {
 
 	// 3. Test Authorized User request (JWT contains user_roles: ["user"])
 	token := createTestToken(testSecret, testUserID, "user@example.com", []string{"user"})
-	req, _ := http.NewRequest(http.MethodGet, "/api/v1/library/playlists", nil)
+	req, _ := http.NewRequest(http.MethodGet, "/api/v1/orders/123", nil)
 	req.Header.Set("Authorization", "Bearer "+token)
 	resp := newCloseNotifyingRecorder()
 
@@ -151,7 +151,9 @@ func TestProxyRouteForwardingWithAuthAndPermissions(t *testing.T) {
 
 func TestProxyRouteUnauthorizedWhenTokenMissing(t *testing.T) {
 	evaluator, _ := permissions.NewEvaluator("")
-	_ = evaluator.LoadFromFile("./config/permissions.json")
+	if err := evaluator.LoadFromFile("./permissions.json"); err != nil {
+		_ = evaluator.LoadFromFile("./config/permissions.json")
+	}
 
 	cfg := &config.Config{
 		HttpServer: config.HttpServerConfig{Mode: "test"},
@@ -159,7 +161,7 @@ func TestProxyRouteUnauthorizedWhenTokenMissing(t *testing.T) {
 		Gateway: config.GatewayConfig{
 			Routes: []config.GatewayRouteConfig{
 				{
-					Prefix:       "/api/v1/library",
+					Prefix:       "/api/v1/orders",
 					Target:       "http://localhost:9999",
 					AuthRequired: true,
 				},
@@ -170,7 +172,7 @@ func TestProxyRouteUnauthorizedWhenTokenMissing(t *testing.T) {
 	logger := zerolog.Nop()
 	server := NewServer(cfg, &logger, evaluator)
 
-	req, _ := http.NewRequest(http.MethodGet, "/api/v1/library/playlists", nil)
+	req, _ := http.NewRequest(http.MethodGet, "/api/v1/orders/123", nil)
 	resp := httptest.NewRecorder()
 
 	server.Engine().ServeHTTP(resp, req)
@@ -277,5 +279,62 @@ func TestNoRoute(t *testing.T) {
 
 	if resp.Code != http.StatusNotFound {
 		t.Fatalf("expected 404 Not Found, got %d", resp.Code)
+	}
+}
+
+func TestUserRolePermissionsMatrix(t *testing.T) {
+	evaluator, err := permissions.NewEvaluator("./permissions.json")
+	if err != nil {
+		t.Fatalf("failed to load permissions.json: %v", err)
+	}
+
+	userRoles := []string{"user"}
+	adminRoles := []string{"admin"}
+
+	tests := []struct {
+		method string
+		path   string
+		allow  bool
+	}{
+		// Allowed for user
+		{http.MethodGet, "/api/v1/users/me", true},
+		{http.MethodPut, "/api/v1/users/me", true},
+		{http.MethodPut, "/api/v1/users/me/password", true},
+		{http.MethodPost, "/api/v1/upload", true},
+		{http.MethodGet, "/api/v1/organizers", true},
+		{http.MethodGet, "/api/v1/organizers/123", true},
+		{http.MethodGet, "/api/v1/venues", true},
+		{http.MethodGet, "/api/v1/venues/123", true},
+		{http.MethodGet, "/api/v1/events", true},
+		{http.MethodGet, "/api/v1/events/slug/concert-2026", true},
+		{http.MethodGet, "/api/v1/events/123", true},
+		{http.MethodGet, "/api/v1/inventories/stock", true},
+		{http.MethodGet, "/api/v1/inventories/stock/123", true},
+		{http.MethodGet, "/api/v1/orders/123", true},
+		{http.MethodPost, "/api/v1/orders", true},
+
+		// Forbidden for user (admin only)
+		{http.MethodPost, "/api/v1/organizers", false},
+		{http.MethodPut, "/api/v1/organizers/123", false},
+		{http.MethodDelete, "/api/v1/organizers/123", false},
+		{http.MethodPost, "/api/v1/venues", false},
+		{http.MethodPut, "/api/v1/venues/123", false},
+		{http.MethodDelete, "/api/v1/venues/123", false},
+		{http.MethodPost, "/api/v1/events", false},
+		{http.MethodPut, "/api/v1/events/123", false},
+		{http.MethodDelete, "/api/v1/events/123", false},
+		{http.MethodPost, "/api/v1/inventories", false},
+		{http.MethodPut, "/api/v1/inventories/stock", false},
+		{http.MethodDelete, "/api/v1/orders/123", false},
+	}
+
+	for _, tc := range tests {
+		got := evaluator.IsAllowed(userRoles, tc.method, tc.path)
+		if got != tc.allow {
+			t.Errorf("user role IsAllowed(%s, %s) = %v, want %v", tc.method, tc.path, got, tc.allow)
+		}
+		if !evaluator.IsAllowed(adminRoles, tc.method, tc.path) {
+			t.Errorf("admin role should be allowed for %s %s", tc.method, tc.path)
+		}
 	}
 }

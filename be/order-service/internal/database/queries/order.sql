@@ -59,3 +59,30 @@ WHERE order_code = $1 AND deleted_at IS NULL;
 -- name: GetOrderItemsByOrderID :many
 SELECT * FROM order_items
 WHERE order_id = $1 AND deleted_at IS NULL;
+
+-- name: AcquireOrderIdempotencyKey :one
+WITH ins AS (
+    INSERT INTO order_idempotency_keys (
+        user_id,
+        key,
+        order_id,
+        expires_at
+    ) VALUES (
+        $1, $2, $3, $4
+    )
+    ON CONFLICT (user_id, key) DO UPDATE
+        SET order_id = EXCLUDED.order_id,
+            created_at = NOW(),
+            expires_at = EXCLUDED.expires_at
+    WHERE order_idempotency_keys.expires_at <= NOW()
+    RETURNING user_id, key, order_id, created_at, expires_at, TRUE AS acquired
+)
+SELECT user_id, key, order_id, created_at, expires_at, acquired FROM ins
+UNION ALL
+SELECT user_id, key, order_id, created_at, expires_at, FALSE AS acquired
+FROM order_idempotency_keys
+WHERE user_id = $1 AND key = $2 AND NOT EXISTS (SELECT 1 FROM ins);
+
+-- name: DeleteOrderIdempotencyKey :exec
+DELETE FROM order_idempotency_keys
+WHERE user_id = $1 AND key = $2 AND order_id = $3;

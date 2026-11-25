@@ -11,6 +11,7 @@ post {
 }
 
 headers {
+  Authorization: Bearer {{token}}
   Content-Type: application/json
 }
 
@@ -18,8 +19,8 @@ body:json {
   {
     "organizer_id": "{{organizer_id}}",
     "venue_id": "{{venue_id}}",
-    "name": "Summer Sonic Music Festival 2027",
-    "slug": "summer-sonic-music-festival-2027",
+    "name": "Summer Sonic Music Festival 1343229",
+  //   "slug": "summer-sonic-music-festival-2027",
     "description": "The largest outdoor international music festival in Vietnam",
     "poster_url": "https://example.com/poster-summer-sonic.jpg",
     "start_at": "2026-08-15T16:00:00Z",
@@ -27,7 +28,7 @@ body:json {
     "status": "PUBLISHED",
     "ticket_types": [
       {
-        "sku": "SS27-VIP-ZONEA",
+        "sku": "SS27-V455IP-ZONEA",
         "name": "VIP Standing Zone A",
         "description": "Front stage access and welcome drink",
         "price": 2500000,
@@ -42,7 +43,7 @@ body:json {
         "status": "ACTIVE"
       },
       {
-        "sku": "SS27-GA",
+        "sku": "SS2157-GA6",
         "name": "General Admission",
         "description": "Standard festival entry",
         "price": 800000,

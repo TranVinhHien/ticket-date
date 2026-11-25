@@ -44,6 +44,7 @@ type Cache interface {
 	// Atomic stock operations
 	SetIntNX(ctx context.Context, key string, value int64, ttl time.Duration) (bool, error)
 	DeductStockAtomic(ctx context.Context, items []DeductStockItem) (*DeductStockResult, error)
+	RestoreStockAtomic(ctx context.Context, items []DeductStockItem) error
 }
 
 // DeductStockItem represents an individual stock item to deduct.

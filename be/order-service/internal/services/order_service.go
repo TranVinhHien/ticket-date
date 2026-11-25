@@ -26,6 +26,11 @@ import (
 const (
 	DefaultCurrency      = "VND"
 	DefaultOrderValidity = 15 * time.Minute
+
+	DefaultIdempotencyTTL = 24 * time.Hour
+
+	DefaultCompensateTTL = 5 * time.Second
+	MaxIdempotencyKeyLen = 64
 	EventOrderCreated    = "OrderCreated"
 )
 
@@ -76,6 +81,12 @@ func (s *orderService) CreateOrder(ctx context.Context, userID uuid.UUID, req dt
 		return nil, dto.ErrEmptyOrderItems
 	}
 
+	idempotencyKey := strings.TrimSpace(req.IdempotencyKey)
+	if len(idempotencyKey) > MaxIdempotencyKeyLen || len(idempotencyKey) == 0 {
+		log.Printf("[OrderService.CreateOrder] Validation failed: idempotency key exceeds %d chars", MaxIdempotencyKeyLen)
+		return nil, dto.ErrInvalidIdempotencyKey
+	}
+
 	// Validate items and merge quantities by ticket_type_id
 	mergedQuantities := make(map[uuid.UUID]int32)
 	var uniqueTicketTypeIDs []uuid.UUID
@@ -93,6 +104,19 @@ func (s *orderService) CreateOrder(ctx context.Context, userID uuid.UUID, req dt
 			uniqueTicketTypeIDs = append(uniqueTicketTypeIDs, item.TicketTypeID)
 		}
 		mergedQuantities[item.TicketTypeID] += item.Quantity
+	}
+
+	orderID := uuid.New()
+
+	if idempotencyKey != "" && s.repo.Queries() != nil {
+		replayed, _, err := s.acquireOrReplayIdempotency(ctx, userID, idempotencyKey, orderID)
+		if err != nil {
+			return nil, err
+		}
+		if replayed != nil {
+			log.Printf("[OrderService.CreateOrder] Replaying existing order for userID=%s, idempotencyKey=%q, orderID=%s", userID, idempotencyKey, replayed.ID)
+			return replayed, nil
+		}
 	}
 
 	log.Printf("[OrderService.CreateOrder] Merged items into %d unique ticket types: %+v", len(uniqueTicketTypeIDs), mergedQuantities)
@@ -164,12 +188,19 @@ func (s *orderService) CreateOrder(ctx context.Context, userID uuid.UUID, req dt
 	log.Printf("[OrderService.CreateOrder] Total amount calculated: %d %s across %d ticket types", totalAmount, currency, len(uniqueTicketTypeIDs))
 
 	// Deduct stock via Inventory Service gRPC
+	var restoreItems []*pbInventory.RestoreItem
 	if s.inventoryClient != nil {
 		deductItems := make([]*pbInventory.DeductItem, len(uniqueTicketTypeIDs))
+		restoreItems = make([]*pbInventory.RestoreItem, len(uniqueTicketTypeIDs))
 		for i, id := range uniqueTicketTypeIDs {
+			qty := mergedQuantities[id]
 			deductItems[i] = &pbInventory.DeductItem{
 				TicketTypeId: id.String(),
-				Quantity:     mergedQuantities[id],
+				Quantity:     qty,
+			}
+			restoreItems[i] = &pbInventory.RestoreItem{
+				TicketTypeId: id.String(),
+				Quantity:     qty,
 			}
 		}
 
@@ -196,7 +227,6 @@ func (s *orderService) CreateOrder(ctx context.Context, userID uuid.UUID, req dt
 		log.Printf("[OrderService.CreateOrder] Stock deduction confirmed successfully by InventoryService")
 	}
 
-	orderID := uuid.New()
 	orderCode := generateOrderCode()
 	expiresAt := time.Now().Add(DefaultOrderValidity)
 
@@ -281,7 +311,7 @@ func (s *orderService) CreateOrder(ctx context.Context, userID uuid.UUID, req dt
 
 		// 4. Insert into outbox_event
 		_, err = q.CreateOutboxEvent(ctx, db.CreateOutboxEventParams{
-			AggregateID: orderID.String(),
+			AggregateID: req.IdempotencyKey,
 			EventType:   EventOrderCreated,
 			Payload:     string(payloadBytes),
 			Status:      0,
@@ -297,11 +327,75 @@ func (s *orderService) CreateOrder(ctx context.Context, userID uuid.UUID, req dt
 
 	if err != nil {
 		log.Printf("[OrderService.CreateOrder] Transaction failed: %v", err)
+		s.compensateDeductedStock(ctx, restoreItems)
+		s.releaseIdempotencyKey(ctx, userID, idempotencyKey, orderID)
 		return nil, err
 	}
 
 	log.Printf("[OrderService.CreateOrder] Order created successfully: orderCode=%s, orderID=%s, totalAmount=%d %s", orderCode, orderID, totalAmount, currency)
 	return finalResp, nil
+}
+
+func (s *orderService) acquireOrReplayIdempotency(ctx context.Context, userID uuid.UUID, key string, orderID uuid.UUID) (*dto.OrderResponse, bool, error) {
+	row, err := s.repo.Queries().AcquireOrderIdempotencyKey(ctx, db.AcquireOrderIdempotencyKeyParams{
+		UserID:    userID,
+		Key:       key,
+		OrderID:   orderID,
+		ExpiresAt: time.Now().Add(DefaultIdempotencyTTL),
+	})
+	if err != nil {
+		return nil, false, fmt.Errorf("acquire idempotency key: %w", err)
+	}
+	if row.Acquired {
+		return nil, true, nil
+	}
+
+	existingOrder, err := s.GetOrderByID(ctx, row.OrderID)
+	if err != nil {
+		if errors.Is(err, dto.ErrOrderNotFound) {
+			return nil, false, dto.ErrOrderInProgress
+		}
+		return nil, false, err
+	}
+	return existingOrder, false, nil
+}
+
+func (s *orderService) releaseIdempotencyKey(ctx context.Context, userID uuid.UUID, key string, orderID uuid.UUID) {
+	queries := s.repo.Queries()
+	if queries == nil {
+		return
+	}
+	cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), DefaultCompensateTTL)
+	defer cancel()
+
+	if err := queries.DeleteOrderIdempotencyKey(cleanupCtx, db.DeleteOrderIdempotencyKeyParams{
+		UserID:  userID,
+		Key:     key,
+		OrderID: orderID,
+	}); err != nil {
+		log.Printf("[OrderService.CreateOrder] Warning: failed to release idempotency key=%q: %v", key, err)
+	}
+}
+
+// compensateDeductedStock restores stock in InventoryService when the order DB transaction fails.
+// It detaches parent cancellation so compensation still runs if the request context was cancelled.
+func (s *orderService) compensateDeductedStock(ctx context.Context, items []*pbInventory.RestoreItem) {
+	if s.inventoryClient == nil || len(items) == 0 {
+		return
+	}
+
+	compensateCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), DefaultCompensateTTL)
+	defer cancel()
+
+	log.Printf("[OrderService.CreateOrder] Compensating deducted stock via InventoryService.RestoreStock: itemsCount=%d", len(items))
+	resp, err := s.inventoryClient.RestoreStock(compensateCtx, &pbInventory.RestoreStockRequest{
+		Items: items,
+	})
+	if err != nil || resp == nil || !resp.Success {
+		log.Printf("[OrderService.CreateOrder] CRITICAL: failed to restore stock after DB transaction failure: err=%v, resp=%+v", err, resp)
+		return
+	}
+	log.Printf("[OrderService.CreateOrder] Successfully compensated stock for %d ticket types", len(items))
 }
 
 func (s *orderService) GetOrderByID(ctx context.Context, id uuid.UUID) (*dto.OrderResponse, error) {

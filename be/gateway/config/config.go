@@ -88,7 +88,7 @@ func ResolveConfigFile(customPath string) string {
 	}
 
 	candidates := []string{
-		fmt.Sprintf("./config/gateway.%s.yaml", appEnv),
+		fmt.Sprintf("./app.%s.yaml", appEnv),
 		"./config/gateway.yaml",
 		fmt.Sprintf("./gateway.%s.yaml", appEnv),
 		"./gateway.yaml",

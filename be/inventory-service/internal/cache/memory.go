@@ -331,3 +331,26 @@ func (c *memoryCache) DeductStockAtomic(ctx context.Context, items []DeductStock
 
 	return &DeductStockResult{Status: DeductStatusOK}, nil
 }
+
+func (c *memoryCache) RestoreStockAtomic(ctx context.Context, items []DeductStockItem) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	for _, item := range items {
+		cached, exists := c.items[item.Key]
+		if !exists || cached.isExpired() {
+			continue
+		}
+		currentStock, err := strconv.ParseInt(string(cached.value), 10, 64)
+		if err != nil {
+			continue
+		}
+		newStock := currentStock + item.Quantity
+		c.items[item.Key] = memoryItem{
+			value:     []byte(strconv.FormatInt(newStock, 10)),
+			expiresAt: cached.expiresAt,
+		}
+	}
+
+	return nil
+}

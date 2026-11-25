@@ -15,6 +15,9 @@ var (
 	ErrInvalidUserID      = errors.New("valid user id is required")
 	ErrInsufficientStock  = errors.New("insufficient stock")
 	ErrTicketTypeNotFound = errors.New("ticket type not found")
+
+	ErrInvalidIdempotencyKey = errors.New("idempotency key must not exceed 64 characters")
+	ErrOrderInProgress       = errors.New("order with this idempotency key is currently being processed")
 )
 
 type CreateOrderItemRequest struct {
@@ -23,6 +26,8 @@ type CreateOrderItemRequest struct {
 }
 
 type CreateOrderRequest struct {
+	IdempotencyKey string `json:"idempotency_key,omitempty" binding:"required"`
+
 	Currency string                   `json:"currency"`
 	Items    []CreateOrderItemRequest `json:"items" binding:"required,min=1,dive"`
 }

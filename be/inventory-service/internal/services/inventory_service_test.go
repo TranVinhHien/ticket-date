@@ -700,3 +700,59 @@ func TestDeductStock_CacheMiss_NotFoundInDB(t *testing.T) {
 		t.Fatalf("expected NotFound on DB cache miss, got %v", err)
 	}
 }
+
+func TestRestoreStock_SuccessAndMergeDuplicates(t *testing.T) {
+	memCache := cache.NewMemoryCache(5*time.Minute, 1*time.Minute)
+	ticketID1 := uuid.New()
+	ticketID2 := uuid.New()
+	missingID := uuid.New()
+	ctx := context.Background()
+
+	_ = memCache.SetInt(ctx, "inventory:available:"+ticketID1.String(), 5, 5*time.Minute)
+	_ = memCache.SetInt(ctx, "inventory:available:"+ticketID2.String(), 10, 5*time.Minute)
+
+	svc := services.NewInventoryService(&testRepo{dbtx: &mockDBTX{}}, memCache)
+
+	err := svc.RestoreStock(ctx, dto.RestoreStockRequest{
+		Items: []dto.DeductStockItemDTO{
+			{TicketTypeID: ticketID1, Quantity: 2},
+			{TicketTypeID: ticketID1, Quantity: 3},
+			{TicketTypeID: ticketID2, Quantity: 4},
+			{TicketTypeID: missingID, Quantity: 1},
+		},
+	})
+	if err != nil {
+		t.Fatalf("unexpected error on RestoreStock: %v", err)
+	}
+
+	v1, _ := memCache.GetInt(ctx, "inventory:available:"+ticketID1.String())
+	v2, _ := memCache.GetInt(ctx, "inventory:available:"+ticketID2.String())
+	if v1 != 10 {
+		t.Fatalf("expected ticket1 stock 10 after restore, got %d", v1)
+	}
+	if v2 != 14 {
+		t.Fatalf("expected ticket2 stock 14 after restore, got %d", v2)
+	}
+	if _, err := memCache.GetInt(ctx, "inventory:available:"+missingID.String()); err != cache.ErrCacheMiss {
+		t.Fatalf("expected uncached ticket to remain cache miss, got err=%v", err)
+	}
+}
+
+func TestRestoreStock_Validation(t *testing.T) {
+	svc := services.NewInventoryService(&testRepo{dbtx: &mockDBTX{}}, nil)
+	ctx := context.Background()
+
+	if err := svc.RestoreStock(ctx, dto.RestoreStockRequest{}); grpcErrors.Code(err) != codes.InvalidArgument {
+		t.Fatalf("expected InvalidArgument on empty items, got %v", err)
+	}
+	if err := svc.RestoreStock(ctx, dto.RestoreStockRequest{
+		Items: []dto.DeductStockItemDTO{{TicketTypeID: uuid.Nil, Quantity: 1}},
+	}); grpcErrors.Code(err) != codes.InvalidArgument {
+		t.Fatalf("expected InvalidArgument on nil UUID, got %v", err)
+	}
+	if err := svc.RestoreStock(ctx, dto.RestoreStockRequest{
+		Items: []dto.DeductStockItemDTO{{TicketTypeID: uuid.New(), Quantity: 0}},
+	}); grpcErrors.Code(err) != codes.InvalidArgument {
+		t.Fatalf("expected InvalidArgument on 0 quantity, got %v", err)
+	}
+}

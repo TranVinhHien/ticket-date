@@ -232,4 +232,23 @@ func TestMemoryCache_DeductStockAtomic(t *testing.T) {
 	if v1 != 7 || v2 != 15 {
 		t.Fatalf("expected 7 and 15, got %d and %d", v1, v2)
 	}
+
+	// 4. RestoreStockAtomic adds back existing keys and skips missing keys
+	err = c.RestoreStockAtomic(ctx, []cache.DeductStockItem{
+		{Key: "item:1", Quantity: 3},
+		{Key: "item:2", Quantity: 5},
+		{Key: "item:missing", Quantity: 9},
+	})
+	if err != nil {
+		t.Fatalf("unexpected error on RestoreStockAtomic: %v", err)
+	}
+
+	v1, _ = c.GetInt(ctx, "item:1")
+	v2, _ = c.GetInt(ctx, "item:2")
+	if v1 != 10 || v2 != 20 {
+		t.Fatalf("expected 10 and 20 after restore, got %d and %d", v1, v2)
+	}
+	if _, err := c.GetInt(ctx, "item:missing"); err != cache.ErrCacheMiss {
+		t.Fatalf("expected missing key to remain absent, got err=%v", err)
+	}
 }

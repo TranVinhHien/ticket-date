@@ -273,3 +273,73 @@ func (q *Queries) GetOrderItemsByOrderID(ctx context.Context, orderID uuid.UUID)
 	}
 	return items, nil
 }
+
+const acquireOrderIdempotencyKey = `-- name: AcquireOrderIdempotencyKey :one
+WITH ins AS (
+    INSERT INTO order_idempotency_keys (
+        user_id,
+        key,
+        order_id,
+        expires_at
+    ) VALUES (
+        $1, $2, $3, $4
+    )
+    ON CONFLICT (user_id, key) DO UPDATE
+        SET order_id = EXCLUDED.order_id,
+            created_at = NOW(),
+            expires_at = EXCLUDED.expires_at
+    WHERE order_idempotency_keys.expires_at <= NOW()
+    RETURNING user_id, key, order_id, created_at, expires_at, TRUE AS acquired
+)
+SELECT user_id, key, order_id, created_at, expires_at, acquired FROM ins
+UNION ALL
+SELECT user_id, key, order_id, created_at, expires_at, FALSE AS acquired
+FROM order_idempotency_keys
+WHERE user_id = $1 AND key = $2 AND NOT EXISTS (SELECT 1 FROM ins)
+`
+
+type AcquireOrderIdempotencyKeyParams struct {
+	UserID    uuid.UUID `json:"user_id"`
+	Key       string    `json:"key"`
+	OrderID   uuid.UUID `json:"order_id"`
+	ExpiresAt time.Time `json:"expires_at"`
+}
+
+type AcquireOrderIdempotencyKeyRow struct {
+	UserID    uuid.UUID `json:"user_id"`
+	Key       string    `json:"key"`
+	OrderID   uuid.UUID `json:"order_id"`
+	CreatedAt time.Time `json:"created_at"`
+	ExpiresAt time.Time `json:"expires_at"`
+	Acquired  bool      `json:"acquired"`
+}
+
+func (q *Queries) AcquireOrderIdempotencyKey(ctx context.Context, arg AcquireOrderIdempotencyKeyParams) (AcquireOrderIdempotencyKeyRow, error) {
+	row := q.db.QueryRow(ctx, acquireOrderIdempotencyKey, arg.UserID, arg.Key, arg.OrderID, arg.ExpiresAt)
+	var i AcquireOrderIdempotencyKeyRow
+	err := row.Scan(
+		&i.UserID,
+		&i.Key,
+		&i.OrderID,
+		&i.CreatedAt,
+		&i.ExpiresAt,
+		&i.Acquired,
+	)
+	return i, err
+}
+
+const deleteOrderIdempotencyKey = `-- name: DeleteOrderIdempotencyKey :exec
+DELETE FROM order_idempotency_keys
+WHERE user_id = $1 AND key = $2 AND order_id = $3
+`
+
+type DeleteOrderIdempotencyKeyParams struct {
+	UserID  uuid.UUID `json:"user_id"`
+	Key     string    `json:"key"`
+	OrderID uuid.UUID `json:"order_id"`
+}
+
+func (q *Queries) DeleteOrderIdempotencyKey(ctx context.Context, arg DeleteOrderIdempotencyKeyParams) error {
+	_, err := q.db.Exec(ctx, deleteOrderIdempotencyKey, arg.UserID, arg.Key, arg.OrderID)
+	return err
+}

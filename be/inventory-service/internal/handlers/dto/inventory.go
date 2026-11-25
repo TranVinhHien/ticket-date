@@ -26,6 +26,10 @@ type DeductStockRequest struct {
 	Items []DeductStockItemDTO `json:"items" binding:"required,min=1,dive"`
 }
 
+type RestoreStockRequest struct {
+	Items []DeductStockItemDTO `json:"items" binding:"required,min=1,dive"`
+}
+
 type CreateInventoryItem struct {
 	TicketTypeID  uuid.UUID `json:"ticket_type_id" binding:"required"`
 	TotalQuantity int32     `json:"total_quantity" binding:"min=0"`

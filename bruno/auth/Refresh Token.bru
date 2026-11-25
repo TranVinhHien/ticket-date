@@ -15,3 +15,17 @@ body:json {
     "refresh_token": "{{refresh_token}}"
   }
 }
+
+script:post-response {
+  const body = res.getBody();
+  
+  if (body && body.code === "200" && body.data && body.data.token) {
+    
+    bru.setVar("token", body.data.token);
+    bru.setVar("refresh_token",body.data.refresh_token)
+    console.log("Đã lưu accessToken thành công:", body.data.token);
+    
+  } else {
+    console.log("Không tìm thấy token trong phản hồi API.");
+  }
+}

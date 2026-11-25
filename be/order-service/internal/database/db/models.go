@@ -53,3 +53,11 @@ type OutboxEvent struct {
 	CreatedAt   time.Time  `json:"created_at"`
 	PublishedAt *time.Time `json:"published_at"`
 }
+
+type OrderIdempotencyKey struct {
+	UserID    uuid.UUID `json:"user_id"`
+	Key       string    `json:"key"`
+	OrderID   uuid.UUID `json:"order_id"`
+	CreatedAt time.Time `json:"created_at"`
+	ExpiresAt time.Time `json:"expires_at"`
+}

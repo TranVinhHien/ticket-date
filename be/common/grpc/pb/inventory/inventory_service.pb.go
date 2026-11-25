@@ -161,6 +161,146 @@ func (x *DeductStockResponse) GetSuccess() bool {
 	return false
 }
 
+type RestoreItem struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	TicketTypeId  string                 `protobuf:"bytes,1,opt,name=ticket_type_id,json=ticketTypeId,proto3" json:"ticket_type_id,omitempty"`
+	Quantity      int32                  `protobuf:"varint,2,opt,name=quantity,proto3" json:"quantity,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RestoreItem) Reset() {
+	*x = RestoreItem{}
+	mi := &file_inventory_inventory_service_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RestoreItem) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RestoreItem) ProtoMessage() {}
+
+func (x *RestoreItem) ProtoReflect() protoreflect.Message {
+	mi := &file_inventory_inventory_service_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RestoreItem.ProtoReflect.Descriptor instead.
+func (*RestoreItem) Descriptor() ([]byte, []int) {
+	return file_inventory_inventory_service_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *RestoreItem) GetTicketTypeId() string {
+	if x != nil {
+		return x.TicketTypeId
+	}
+	return ""
+}
+
+func (x *RestoreItem) GetQuantity() int32 {
+	if x != nil {
+		return x.Quantity
+	}
+	return 0
+}
+
+type RestoreStockRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Items         []*RestoreItem         `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RestoreStockRequest) Reset() {
+	*x = RestoreStockRequest{}
+	mi := &file_inventory_inventory_service_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RestoreStockRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RestoreStockRequest) ProtoMessage() {}
+
+func (x *RestoreStockRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_inventory_inventory_service_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RestoreStockRequest.ProtoReflect.Descriptor instead.
+func (*RestoreStockRequest) Descriptor() ([]byte, []int) {
+	return file_inventory_inventory_service_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *RestoreStockRequest) GetItems() []*RestoreItem {
+	if x != nil {
+		return x.Items
+	}
+	return nil
+}
+
+type RestoreStockResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Success       bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RestoreStockResponse) Reset() {
+	*x = RestoreStockResponse{}
+	mi := &file_inventory_inventory_service_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RestoreStockResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RestoreStockResponse) ProtoMessage() {}
+
+func (x *RestoreStockResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_inventory_inventory_service_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RestoreStockResponse.ProtoReflect.Descriptor instead.
+func (*RestoreStockResponse) Descriptor() ([]byte, []int) {
+	return file_inventory_inventory_service_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *RestoreStockResponse) GetSuccess() bool {
+	if x != nil {
+		return x.Success
+	}
+	return false
+}
+
 var File_inventory_inventory_service_proto protoreflect.FileDescriptor
 
 const file_inventory_inventory_service_proto_rawDesc = "" +
@@ -173,9 +313,17 @@ const file_inventory_inventory_service_proto_rawDesc = "" +
 	"\x12DeductStockRequest\x12+\n" +
 	"\x05items\x18\x01 \x03(\v2\x15.inventory.DeductItemR\x05items\"/\n" +
 	"\x13DeductStockResponse\x12\x18\n" +
-	"\asuccess\x18\x01 \x01(\bR\asuccess2`\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\"O\n" +
+	"\vRestoreItem\x12$\n" +
+	"\x0eticket_type_id\x18\x01 \x01(\tR\fticketTypeId\x12\x1a\n" +
+	"\bquantity\x18\x02 \x01(\x05R\bquantity\"C\n" +
+	"\x13RestoreStockRequest\x12,\n" +
+	"\x05items\x18\x01 \x03(\v2\x16.inventory.RestoreItemR\x05items\"0\n" +
+	"\x14RestoreStockResponse\x12\x18\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess2\xb1\x01\n" +
 	"\x10InventoryService\x12L\n" +
-	"\vDeductStock\x12\x1d.inventory.DeductStockRequest\x1a\x1e.inventory.DeductStockResponseBMZKgithub.com/TranVinhHien/ticket-date/be/common/grpc/pb/inventory;pbInventoryb\x06proto3"
+	"\vDeductStock\x12\x1d.inventory.DeductStockRequest\x1a\x1e.inventory.DeductStockResponse\x12O\n" +
+	"\fRestoreStock\x12\x1e.inventory.RestoreStockRequest\x1a\x1f.inventory.RestoreStockResponseBMZKgithub.com/TranVinhHien/ticket-date/be/common/grpc/pb/inventory;pbInventoryb\x06proto3"
 
 var (
 	file_inventory_inventory_service_proto_rawDescOnce sync.Once
@@ -189,21 +337,27 @@ func file_inventory_inventory_service_proto_rawDescGZIP() []byte {
 	return file_inventory_inventory_service_proto_rawDescData
 }
 
-var file_inventory_inventory_service_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
+var file_inventory_inventory_service_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
 var file_inventory_inventory_service_proto_goTypes = []any{
-	(*DeductItem)(nil),          // 0: inventory.DeductItem
-	(*DeductStockRequest)(nil),  // 1: inventory.DeductStockRequest
-	(*DeductStockResponse)(nil), // 2: inventory.DeductStockResponse
+	(*DeductItem)(nil),           // 0: inventory.DeductItem
+	(*DeductStockRequest)(nil),   // 1: inventory.DeductStockRequest
+	(*DeductStockResponse)(nil),  // 2: inventory.DeductStockResponse
+	(*RestoreItem)(nil),          // 3: inventory.RestoreItem
+	(*RestoreStockRequest)(nil),  // 4: inventory.RestoreStockRequest
+	(*RestoreStockResponse)(nil), // 5: inventory.RestoreStockResponse
 }
 var file_inventory_inventory_service_proto_depIdxs = []int32{
 	0, // 0: inventory.DeductStockRequest.items:type_name -> inventory.DeductItem
-	1, // 1: inventory.InventoryService.DeductStock:input_type -> inventory.DeductStockRequest
-	2, // 2: inventory.InventoryService.DeductStock:output_type -> inventory.DeductStockResponse
-	2, // [2:3] is the sub-list for method output_type
-	1, // [1:2] is the sub-list for method input_type
-	1, // [1:1] is the sub-list for extension type_name
-	1, // [1:1] is the sub-list for extension extendee
-	0, // [0:1] is the sub-list for field type_name
+	3, // 1: inventory.RestoreStockRequest.items:type_name -> inventory.RestoreItem
+	1, // 2: inventory.InventoryService.DeductStock:input_type -> inventory.DeductStockRequest
+	4, // 3: inventory.InventoryService.RestoreStock:input_type -> inventory.RestoreStockRequest
+	2, // 4: inventory.InventoryService.DeductStock:output_type -> inventory.DeductStockResponse
+	5, // 5: inventory.InventoryService.RestoreStock:output_type -> inventory.RestoreStockResponse
+	4, // [4:6] is the sub-list for method output_type
+	2, // [2:4] is the sub-list for method input_type
+	2, // [2:2] is the sub-list for extension type_name
+	2, // [2:2] is the sub-list for extension extendee
+	0, // [0:2] is the sub-list for field type_name
 }
 
 func init() { file_inventory_inventory_service_proto_init() }
@@ -217,7 +371,7 @@ func file_inventory_inventory_service_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_inventory_inventory_service_proto_rawDesc), len(file_inventory_inventory_service_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   3,
+			NumMessages:   6,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

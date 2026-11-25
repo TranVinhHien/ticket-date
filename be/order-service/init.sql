@@ -96,3 +96,17 @@ CREATE TABLE outbox_event (
 -- Index
 CREATE INDEX idx_outbox_event_status_created
     ON outbox_event (status, created_at);
+
+-- order_idempotency_keys table
+CREATE TABLE order_idempotency_keys (
+    user_id    UUID NOT NULL,
+    key        VARCHAR(64) NOT NULL,
+    order_id   UUID NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    expires_at TIMESTAMPTZ NOT NULL,
+
+    PRIMARY KEY (user_id, key)
+);
+
+CREATE INDEX idx_order_idempotency_keys_expires
+    ON order_idempotency_keys (expires_at);

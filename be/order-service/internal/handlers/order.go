@@ -4,6 +4,7 @@ import (
 	"errors"
 	"log"
 	"net/http"
+	"strings"
 
 	"github.com/TranVinhHien/ticket-date/be/order-service/internal/handlers/dto"
 	"github.com/TranVinhHien/ticket-date/be/order-service/internal/middleware"
@@ -47,6 +48,9 @@ func (h *OrderHandler) CreateOrder(c *gin.Context) {
 		respondError(c, http.StatusBadRequest, err)
 		return
 	}
+	if strings.TrimSpace(req.IdempotencyKey) == "" {
+		req.IdempotencyKey = strings.TrimSpace(c.GetHeader("Idempotency-Key"))
+	}
 
 	result, err := h.service.CreateOrder(c.Request.Context(), *userID, req)
 	if err != nil {
@@ -54,13 +58,15 @@ func (h *OrderHandler) CreateOrder(c *gin.Context) {
 		switch {
 		case errors.Is(err, dto.ErrEmptyOrderItems),
 			errors.Is(err, dto.ErrInvalidQuantity),
-			errors.Is(err, dto.ErrInvalidUnitPrice):
+			errors.Is(err, dto.ErrInvalidUnitPrice),
+			errors.Is(err, dto.ErrInvalidIdempotencyKey):
 			respondError(c, http.StatusBadRequest, err)
 		case errors.Is(err, dto.ErrInvalidUserID):
 			respondError(c, http.StatusUnauthorized, err)
 		case errors.Is(err, dto.ErrTicketTypeNotFound):
 			respondError(c, http.StatusNotFound, err)
-		case errors.Is(err, dto.ErrInsufficientStock):
+		case errors.Is(err, dto.ErrInsufficientStock),
+			errors.Is(err, dto.ErrOrderInProgress):
 			respondError(c, http.StatusConflict, err)
 		default:
 			respondError(c, http.StatusInternalServerError, err)

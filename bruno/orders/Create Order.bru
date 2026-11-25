@@ -11,16 +11,18 @@ post {
 }
 
 headers {
+  Authorization: Bearer {{token}}
   Content-Type: application/json
-  X-User-ID: a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11
+  ~X-User-ID: a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11
 }
 
 body:json {
   {
+    "idempotency_key":"a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a26",
     "items": [
       {
         "ticket_type_id": "{{ticket_type_id}}",
-        "quantity": 2
+        "quantity": 10
       }
     ]
   }

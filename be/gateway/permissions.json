@@ -25,22 +25,20 @@
       "permissions": {
         "GET": [
           "/api/v1/users/*",
-          "/api/v1/catalog/*",
-          "/api/v1/library/*",
-          "/api/v1/audio/*"
+          "/api/v1/organizers/*",
+          "/api/v1/venues/*",
+          "/api/v1/events/*",
+          "/api/v1/inventories/stock/*",
+          "/api/v1/orders/*"
         ],
         "POST": [
-          "/api/v1/library/*",
-          "/api/v1/listening-events/*",
+          "/api/v1/orders",
           "/api/v1/upload"
         ],
         "PUT": [
-          "/api/v1/users/*",
-          "/api/v1/library/*"
+          "/api/v1/users/*"
         ],
-        "DELETE": [
-          "/api/v1/library/*"
-        ]
+        "DELETE": []
       }
     }
   ]

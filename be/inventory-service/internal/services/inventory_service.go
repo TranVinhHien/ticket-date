@@ -23,6 +23,7 @@ type InventoryService interface {
 	UpdateInventoryStockBatch(ctx context.Context, userID *uuid.UUID, req dto.UpdateInventoryBatchRequest) ([]dto.StockResponse, error)
 	GetCurrentStock(ctx context.Context, ticketTypeID uuid.UUID) (*dto.StockResponse, error)
 	DeductStock(ctx context.Context, req dto.DeductStockRequest) error
+	RestoreStock(ctx context.Context, req dto.RestoreStockRequest) error
 }
 
 type inventoryService struct {
@@ -318,40 +319,10 @@ func (s *inventoryService) GetCurrentStock(ctx context.Context, ticketTypeID uui
 // and retries the atomic check-and-decrement Lua script.
 func (s *inventoryService) DeductStock(ctx context.Context, req dto.DeductStockRequest) error {
 	log.Printf("[InventoryService.DeductStock] Received deduct request: %d items", len(req.Items))
-	// Step 1: Validate Request
-	if len(req.Items) == 0 {
-		log.Printf("[InventoryService.DeductStock] Validation failed: empty items")
-		return grpcErrors.InvalidArgument("items cannot be empty")
-	}
-
-	aggregated := make(map[uuid.UUID]int64)
-	for _, item := range req.Items {
-		if item.TicketTypeID == uuid.Nil {
-			log.Printf("[InventoryService.DeductStock] Validation failed: nil ticket_type_id")
-			return grpcErrors.InvalidArgument("ticket_type_id must be a valid non-nil UUID")
-		}
-		if item.Quantity <= 0 {
-			log.Printf("[InventoryService.DeductStock] Validation failed: quantity <= 0 for ticket %s", item.TicketTypeID)
-			return grpcErrors.InvalidArgument("quantity must be greater than 0 for ticket_type_id: %s", item.TicketTypeID)
-		}
-		aggregated[item.TicketTypeID] += int64(item.Quantity)
-	}
-
-	// Deterministic sorting of ticketTypeIDs to prevent any lock order inversion
-	sortedIDs := make([]uuid.UUID, 0, len(aggregated))
-	for id := range aggregated {
-		sortedIDs = append(sortedIDs, id)
-	}
-	sort.Slice(sortedIDs, func(i, j int) bool {
-		return sortedIDs[i].String() < sortedIDs[j].String()
-	})
-
-	deductItems := make([]cache.DeductStockItem, len(sortedIDs))
-	for i, id := range sortedIDs {
-		deductItems[i] = cache.DeductStockItem{
-			Key:      stockAvailableCacheKey(id),
-			Quantity: aggregated[id],
-		}
+	deductItems, err := prepareStockItems(req.Items)
+	if err != nil {
+		log.Printf("[InventoryService.DeductStock] Validation failed: %v", err)
+		return err
 	}
 
 	log.Printf("[InventoryService.DeductStock] Starting Redis Lua atomic deduction for items=%+v", deductItems)
@@ -389,6 +360,63 @@ func (s *inventoryService) DeductStock(ctx context.Context, req dto.DeductStockR
 
 	log.Printf("[InventoryService.DeductStock] Failed to deduct stock after %d retries", maxRetries)
 	return grpcErrors.Internal("failed to deduct stock after retries")
+}
+
+// RestoreStock atomically restores previously deducted stock on Redis across multiple items.
+// Keys that are no longer cached in Redis are skipped so stale partial counts are not created.
+func (s *inventoryService) RestoreStock(ctx context.Context, req dto.RestoreStockRequest) error {
+	log.Printf("[InventoryService.RestoreStock] Received restore request: %d items", len(req.Items))
+	restoreItems, err := prepareStockItems(req.Items)
+	if err != nil {
+		log.Printf("[InventoryService.RestoreStock] Validation failed: %v", err)
+		return err
+	}
+	if s.cache == nil {
+		return grpcErrors.Internal("cache is not initialized")
+	}
+
+	if err := s.cache.RestoreStockAtomic(ctx, restoreItems); err != nil {
+		log.Printf("[InventoryService.RestoreStock] Redis Lua execution error: %v", err)
+		return grpcErrors.Internal("cache restore stock error: %v", err)
+	}
+
+	log.Printf("[InventoryService.RestoreStock] Successfully restored stock atomically on Redis for %d items", len(restoreItems))
+	return nil
+}
+
+func prepareStockItems(items []dto.DeductStockItemDTO) ([]cache.DeductStockItem, error) {
+	if len(items) == 0 {
+		return nil, grpcErrors.InvalidArgument("items cannot be empty")
+	}
+
+	aggregated := make(map[uuid.UUID]int64)
+	for _, item := range items {
+		if item.TicketTypeID == uuid.Nil {
+			return nil, grpcErrors.InvalidArgument("ticket_type_id must be a valid non-nil UUID")
+		}
+		if item.Quantity <= 0 {
+			return nil, grpcErrors.InvalidArgument("quantity must be greater than 0 for ticket_type_id: %s", item.TicketTypeID)
+		}
+		aggregated[item.TicketTypeID] += int64(item.Quantity)
+	}
+
+	// Deterministic sorting of ticketTypeIDs to prevent any lock order inversion
+	sortedIDs := make([]uuid.UUID, 0, len(aggregated))
+	for id := range aggregated {
+		sortedIDs = append(sortedIDs, id)
+	}
+	sort.Slice(sortedIDs, func(i, j int) bool {
+		return sortedIDs[i].String() < sortedIDs[j].String()
+	})
+
+	result := make([]cache.DeductStockItem, len(sortedIDs))
+	for i, id := range sortedIDs {
+		result[i] = cache.DeductStockItem{
+			Key:      stockAvailableCacheKey(id),
+			Quantity: aggregated[id],
+		}
+	}
+	return result, nil
 }
 
 // initializeMissingStock queries DB in a single batch query (avoiding N+1 query)

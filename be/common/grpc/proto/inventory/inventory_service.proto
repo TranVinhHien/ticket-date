@@ -6,6 +6,7 @@ option go_package = "github.com/TranVinhHien/ticket-date/be/common/grpc/pb/inven
 
 service InventoryService {
   rpc DeductStock(DeductStockRequest) returns (DeductStockResponse);
+  rpc RestoreStock(RestoreStockRequest) returns (RestoreStockResponse);
 }
 
 message DeductItem {
@@ -18,5 +19,18 @@ message DeductStockRequest {
 }
 
 message DeductStockResponse {
+  bool success = 1;
+}
+
+message RestoreItem {
+  string ticket_type_id = 1;
+  int32 quantity = 2;
+}
+
+message RestoreStockRequest {
+  repeated RestoreItem items = 1;
+}
+
+message RestoreStockResponse {
   bool success = 1;
 }

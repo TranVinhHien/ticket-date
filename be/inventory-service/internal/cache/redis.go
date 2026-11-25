@@ -310,3 +310,35 @@ func (c *redisCache) DeductStockAtomic(ctx context.Context, items []DeductStockI
 		return nil, fmt.Errorf("unknown lua status code: %d", statusVal)
 	}
 }
+
+var restoreStockLua = redis.NewScript(`
+for i = 1, #KEYS do
+    local req_qty = tonumber(ARGV[i])
+    if redis.call('EXISTS', KEYS[i]) == 1 then
+        redis.call('INCRBY', KEYS[i], req_qty)
+    end
+end
+return 0
+`)
+
+func (c *redisCache) RestoreStockAtomic(ctx context.Context, items []DeductStockItem) error {
+	if c.client == nil {
+		return fmt.Errorf("redis client is nil")
+	}
+	if len(items) == 0 {
+		return nil
+	}
+
+	keys := make([]string, len(items))
+	args := make([]interface{}, len(items))
+	for i, item := range items {
+		keys[i] = item.Key
+		args[i] = item.Quantity
+	}
+
+	if err := restoreStockLua.Run(ctx, c.client, keys, args...).Err(); err != nil {
+		return fmt.Errorf("redis lua restore stock: %w", err)
+	}
+
+	return nil
+}

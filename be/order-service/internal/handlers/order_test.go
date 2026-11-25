@@ -137,4 +137,54 @@ func TestOrderHandler_CreateOrder(t *testing.T) {
 			t.Errorf("expected 201, got %d", w.Code)
 		}
 	})
+
+	t.Run("forwards Idempotency-Key header and maps in-progress to 409", func(t *testing.T) {
+		var receivedKey string
+		svc := &mockOrderService{
+			createOrderFn: func(ctx context.Context, u uuid.UUID, req dto.CreateOrderRequest) (*dto.OrderResponse, error) {
+				receivedKey = req.IdempotencyKey
+				return nil, dto.ErrOrderInProgress
+			},
+		}
+		r := setupTestRouter(svc)
+
+		body, _ := json.Marshal(dto.CreateOrderRequest{
+			Items: []dto.CreateOrderItemRequest{{TicketTypeID: ticketID, Quantity: 1}},
+		})
+		req, _ := http.NewRequest(http.MethodPost, "/orders", bytes.NewReader(body))
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("X-User-ID", userID.String())
+		req.Header.Set("Idempotency-Key", "idem-header-123")
+		w := httptest.NewRecorder()
+
+		r.ServeHTTP(w, req)
+		if receivedKey != "idem-header-123" {
+			t.Errorf("expected Idempotency-Key 'idem-header-123', got %q", receivedKey)
+		}
+		if w.Code != http.StatusConflict {
+			t.Errorf("expected 409, got %d", w.Code)
+		}
+	})
+
+	t.Run("maps invalid idempotency key to 400", func(t *testing.T) {
+		svc := &mockOrderService{
+			createOrderFn: func(ctx context.Context, u uuid.UUID, req dto.CreateOrderRequest) (*dto.OrderResponse, error) {
+				return nil, dto.ErrInvalidIdempotencyKey
+			},
+		}
+		r := setupTestRouter(svc)
+
+		body, _ := json.Marshal(dto.CreateOrderRequest{
+			Items: []dto.CreateOrderItemRequest{{TicketTypeID: ticketID, Quantity: 1}},
+		})
+		req, _ := http.NewRequest(http.MethodPost, "/orders", bytes.NewReader(body))
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("X-User-ID", userID.String())
+		w := httptest.NewRecorder()
+
+		r.ServeHTTP(w, req)
+		if w.Code != http.StatusBadRequest {
+			t.Errorf("expected 400, got %d", w.Code)
+		}
+	})
 }
