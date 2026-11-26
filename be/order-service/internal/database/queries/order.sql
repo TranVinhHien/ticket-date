@@ -102,3 +102,57 @@ SELECT * FROM orders
 WHERE status = $1 AND deleted_at IS NULL
 ORDER BY created_at ASC
 LIMIT $2 OFFSET $3;
+
+-- name: ClaimPendingOutboxEvents :many
+WITH cte AS (
+    SELECT id FROM outbox_event
+    WHERE status = 0
+    ORDER BY created_at ASC
+    LIMIT $1
+    FOR UPDATE SKIP LOCKED
+)
+UPDATE outbox_event o
+SET status = 1, updated_at = NOW()
+FROM cte
+WHERE o.id = cte.id
+RETURNING o.*;
+
+-- name: MarkOutboxEventSuccess :one
+UPDATE outbox_event
+SET
+    status = 2,
+    published_at = NOW(),
+    last_error = NULL,
+    updated_at = NOW()
+WHERE id = $1
+RETURNING *;
+
+-- name: MarkOutboxEventFailed :one
+UPDATE outbox_event
+SET
+    retry_count = retry_count + $2,
+    status = 3,
+    last_error = $3,
+    updated_at = NOW()
+WHERE id = $1
+RETURNING *;
+
+-- name: MarkOutboxEventRetryOrFailed :one
+UPDATE outbox_event
+SET
+    retry_count = retry_count + 1,
+    status = CASE WHEN retry_count + 1 >= $2 THEN 3 ELSE 0 END,
+    last_error = $3,
+    updated_at = NOW()
+WHERE id = $1
+RETURNING *;
+
+-- name: RecoverStaleSendingOutboxEvents :execrows
+UPDATE outbox_event
+SET
+    retry_count = retry_count + 1,
+    status = CASE WHEN retry_count + 1 >= $1 THEN 3 ELSE 0 END,
+    last_error = 'recovered from stale SENDING state',
+    updated_at = NOW()
+WHERE status = 1
+  AND updated_at <= NOW() - ($2::bigint * INTERVAL '1 second');

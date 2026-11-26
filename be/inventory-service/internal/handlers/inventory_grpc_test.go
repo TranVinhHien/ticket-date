@@ -7,6 +7,7 @@ import (
 
 	grpcErrors "github.com/TranVinhHien/ticket-date/be/common/grpc/errors"
 	pbInventory "github.com/TranVinhHien/ticket-date/be/common/grpc/pb/inventory"
+	"github.com/TranVinhHien/ticket-date/be/common/kafka/events"
 	"github.com/TranVinhHien/ticket-date/be/inventory-service/internal/handlers"
 	"github.com/TranVinhHien/ticket-date/be/inventory-service/internal/handlers/dto"
 	"github.com/google/uuid"
@@ -41,6 +42,10 @@ func (m *mockInventoryService) RestoreStock(ctx context.Context, req dto.Restore
 	if m.restoreStockFn != nil {
 		return m.restoreStockFn(ctx, req)
 	}
+	return nil
+}
+
+func (m *mockInventoryService) HandleOrderCreated(ctx context.Context, eventID string, payload events.OrderCreatedPayload) error {
 	return nil
 }
 

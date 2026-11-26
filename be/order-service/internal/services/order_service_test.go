@@ -11,6 +11,7 @@ import (
 	grpcErrors "github.com/TranVinhHien/ticket-date/be/common/grpc/errors"
 	pbEvent "github.com/TranVinhHien/ticket-date/be/common/grpc/pb/event"
 	pbInventory "github.com/TranVinhHien/ticket-date/be/common/grpc/pb/inventory"
+	"github.com/TranVinhHien/ticket-date/be/common/kafka/events"
 	"github.com/TranVinhHien/ticket-date/be/order-service/internal/database/db"
 	"github.com/TranVinhHien/ticket-date/be/order-service/internal/handlers/dto"
 	"github.com/google/uuid"
@@ -545,8 +546,8 @@ func TestCreateOrder_Success(t *testing.T) {
 	}
 
 	// Verify Outbox Event was created properly
-	if mockDB.capturedEventType != EventOrderCreated {
-		t.Errorf("expected event type %s, got %s", EventOrderCreated, mockDB.capturedEventType)
+	if mockDB.capturedEventType != events.TopicOrderEvents {
+		t.Errorf("expected event type %s, got %s", events.TopicOrderEvents, mockDB.capturedEventType)
 	}
 	if mockDB.capturedAggregateID != resp.ID.String() {
 		t.Errorf("expected aggregate_id %s, got %s", resp.ID.String(), mockDB.capturedAggregateID)

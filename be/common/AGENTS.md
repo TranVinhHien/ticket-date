@@ -32,6 +32,11 @@ description: "Guidelines and rules for the shared foundational library module co
   - `grpc/errors`: Standard gRPC error builders and bidirectional HTTP status mappers.
   - `grpc/helper`: Utilities for Protobuf `structpb` and `timestamppb`.
   - `grpc/proto` & `grpc/pb`: Centralized protobuf definitions and generated stubs.
+- **`kafka`**: Shared production-grade Kafka infrastructure using `twmb/franz-go`:
+  - `kafka.Producer` / `franzProducer`: High-throughput, idempotent async/sync producer with `EventEnvelope` wrapping, LZ4 batch compression, and SASL support.
+  - `kafka.Consumer` / `franzConsumer`: Consumer group with per-partition ordered concurrency workers, in-memory exponential backoff retry, and optional Dead Letter Queue (`.dlq`).
+  - `kafka.EventEnvelope`: Canonical cross-service event wrapper (`event_id`, `event_type`, `version`, `source`, `occurred_at`, `trace_id`, `data`).
+  - `kafka/events`: Strongly-typed payloads for inter-service domain events (e.g. `OrderCreatedPayload`, `OrderCreatedItem`).
 
 ---
 

@@ -51,7 +51,14 @@ type LoggerConfig struct {
 }
 
 type KafkaConfig struct {
-	Brokers []string `mapstructure:"brokers"`
+	Brokers            []string `mapstructure:"brokers"`
+	ClientID           string   `mapstructure:"client_id"`
+	Compression        string   `mapstructure:"compression"`
+	BatchMaxBytes      int32    `mapstructure:"batch_max_bytes"`
+	LingerMs           int      `mapstructure:"linger_ms"`
+	MaxBufferedRecords int      `mapstructure:"max_buffered_records"`
+	AllowAutoTopic     bool     `mapstructure:"allow_auto_topic"`
+	TopicOrderEvents   string   `mapstructure:"topic_order_events"`
 }
 
 type CockroachConfig struct {
@@ -105,6 +112,7 @@ type CronJobConfig struct {
 type CronConfig struct {
 	Enabled       bool          `mapstructure:"enabled"`
 	PendingOrders CronJobConfig `mapstructure:"pending_orders"`
+	OutboxRelay   CronJobConfig `mapstructure:"outbox_relay"`
 }
 
 var App Config

@@ -1,23 +1,30 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"log"
 	"net"
+	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/TranVinhHien/ticket-date/be/common/grpc/interceptor"
 	pbInventory "github.com/TranVinhHien/ticket-date/be/common/grpc/pb/inventory"
+	commonKafka "github.com/TranVinhHien/ticket-date/be/common/kafka"
 	_ "github.com/TranVinhHien/ticket-date/be/inventory-service/docs"
 	"github.com/TranVinhHien/ticket-date/be/inventory-service/internal/cache"
 	"github.com/TranVinhHien/ticket-date/be/inventory-service/internal/config"
+	"github.com/TranVinhHien/ticket-date/be/inventory-service/internal/consumers"
 	"github.com/TranVinhHien/ticket-date/be/inventory-service/internal/database"
 	"github.com/TranVinhHien/ticket-date/be/inventory-service/internal/database/migrations"
 	"github.com/TranVinhHien/ticket-date/be/inventory-service/internal/handlers"
 	"github.com/TranVinhHien/ticket-date/be/inventory-service/internal/repository"
 	"github.com/TranVinhHien/ticket-date/be/inventory-service/internal/router"
 	"github.com/TranVinhHien/ticket-date/be/inventory-service/internal/services"
+	"github.com/rs/zerolog"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/keepalive"
 )
@@ -75,6 +82,37 @@ func main() {
 
 	// Initialize services
 	inventoryService := services.NewInventoryService(inventoryRepo, cacheEngine)
+
+	// Initialize and start Kafka consumer if brokers and topics are configured
+	if len(config.App.Kafka.Brokers) > 0 && len(config.App.Kafka.Topics) > 0 && config.App.Kafka.GroupID != "" {
+		zlog := zerolog.New(os.Stdout).With().Timestamp().Str("service", config.App.App.Name).Logger()
+		kafkaConsumer, err := commonKafka.NewConsumer(commonKafka.ConsumerConfig{
+			Brokers:      config.App.Kafka.Brokers,
+			ClientID:     config.App.Kafka.ClientID,
+			GroupID:      config.App.Kafka.GroupID,
+			Topics:       config.App.Kafka.Topics,
+			MaxRetries:   config.App.Kafka.MaxRetries,
+			RetryBackoff: config.App.Kafka.RetryBackoff,
+			DLQEnabled:   config.App.Kafka.DLQEnabled,
+			DLQSuffix:    config.App.Kafka.DLQSuffix,
+		}, zlog)
+		if err != nil {
+			log.Printf("Warning: failed to initialize Kafka consumer: %v", err)
+		} else {
+			consumers.RegisterOrderEventHandlers(kafkaConsumer, inventoryService)
+			consumerCtx, cancelConsumer := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+			defer cancelConsumer()
+			if err := kafkaConsumer.Start(consumerCtx); err != nil {
+				log.Printf("Warning: failed to start Kafka consumer: %v", err)
+			} else {
+				defer func() {
+					stopCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+					defer cancel()
+					_ = kafkaConsumer.Stop(stopCtx)
+				}()
+			}
+		}
+	}
 
 	// Initialize handlers
 	inventoryHandler := handlers.NewInventoryHandler(inventoryService)

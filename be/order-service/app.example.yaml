@@ -49,8 +49,23 @@ aws:
   secret_access_key: "YOUR_AWS_SECRET_ACCESS_KEY"
   bucket_name: "your-s3-bucket-name"
 
+kafka:
+  brokers: ["localhost:9092"]
+  client_id: "order-service"
+  compression: "lz4"
+  batch_max_bytes: 1048576
+  linger_ms: 10
+  max_buffered_records: 100000
+  allow_auto_topic: true
+  topic_order_events: "order.events"
+
 cron:
+  enabled: true
   pending_orders:
     enabled: true
     interval: "1m"
+    batch: 100
+  outbox_relay:
+    enabled: true
+    interval: "2s"
     batch: 100

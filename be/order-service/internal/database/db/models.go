@@ -50,7 +50,10 @@ type OutboxEvent struct {
 	EventType   string     `json:"event_type"`
 	Payload     string     `json:"payload"`
 	Status      int16      `json:"status"`
+	RetryCount  int16      `json:"retry_count"`
+	LastError   *string    `json:"last_error"`
 	CreatedAt   time.Time  `json:"created_at"`
+	UpdatedAt   time.Time  `json:"updated_at"`
 	PublishedAt *time.Time `json:"published_at"`
 }
 

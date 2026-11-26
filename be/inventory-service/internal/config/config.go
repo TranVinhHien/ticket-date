@@ -48,7 +48,15 @@ type LoggerConfig struct {
 }
 
 type KafkaConfig struct {
-	Brokers []string `mapstructure:"brokers"`
+	Brokers          []string      `mapstructure:"brokers"`
+	ClientID         string        `mapstructure:"client_id"`
+	GroupID          string        `mapstructure:"group_id"`
+	Topics           []string      `mapstructure:"topics"`
+	MaxRetries       int           `mapstructure:"max_retries"`
+	RetryBackoff     time.Duration `mapstructure:"retry_backoff"`
+	DLQEnabled       bool          `mapstructure:"dlq_enabled"`
+	DLQSuffix        string        `mapstructure:"dlq_suffix"`
+	TopicOrderEvents string        `mapstructure:"topic_order_events"`
 }
 
 type CockroachConfig struct {

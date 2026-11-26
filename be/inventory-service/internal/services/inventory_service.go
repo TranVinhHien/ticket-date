@@ -10,6 +10,7 @@ import (
 	"time"
 
 	grpcErrors "github.com/TranVinhHien/ticket-date/be/common/grpc/errors"
+	"github.com/TranVinhHien/ticket-date/be/common/kafka/events"
 	"github.com/TranVinhHien/ticket-date/be/inventory-service/internal/cache"
 	"github.com/TranVinhHien/ticket-date/be/inventory-service/internal/database/db"
 	"github.com/TranVinhHien/ticket-date/be/inventory-service/internal/handlers/dto"
@@ -24,6 +25,7 @@ type InventoryService interface {
 	GetCurrentStock(ctx context.Context, ticketTypeID uuid.UUID) (*dto.StockResponse, error)
 	DeductStock(ctx context.Context, req dto.DeductStockRequest) error
 	RestoreStock(ctx context.Context, req dto.RestoreStockRequest) error
+	HandleOrderCreated(ctx context.Context, eventID string, payload events.OrderCreatedPayload) error
 }
 
 type inventoryService struct {
@@ -382,6 +384,104 @@ func (s *inventoryService) RestoreStock(ctx context.Context, req dto.RestoreStoc
 
 	log.Printf("[InventoryService.RestoreStock] Successfully restored stock atomically on Redis for %d items", len(restoreItems))
 	return nil
+}
+
+// HandleOrderCreated idempotently deducts (holds) stock in PostgreSQL for an OrderCreated event
+// and records an inventory_transactions ('HOLD') audit trail.
+func (s *inventoryService) HandleOrderCreated(ctx context.Context, eventID string, payload events.OrderCreatedPayload) error {
+	if payload.ID == uuid.Nil {
+		return fmt.Errorf("invalid order_id in OrderCreated event")
+	}
+	if len(payload.Items) == 0 {
+		return nil
+	}
+
+	aggregated := make(map[uuid.UUID]int32)
+	for _, item := range payload.Items {
+		if item.TicketTypeID == uuid.Nil || item.Quantity <= 0 {
+			return fmt.Errorf("invalid item in OrderCreated order_id=%s: ticket_type_id=%s qty=%d",
+				payload.ID, item.TicketTypeID, item.Quantity)
+		}
+		aggregated[item.TicketTypeID] += item.Quantity
+	}
+
+	sortedIDs := make([]uuid.UUID, 0, len(aggregated))
+	for id := range aggregated {
+		sortedIDs = append(sortedIDs, id)
+	}
+	sort.Slice(sortedIDs, func(i, j int) bool {
+		return sortedIDs[i].String() < sortedIDs[j].String()
+	})
+
+	idempotencyToken := fmt.Sprintf("OrderCreated:%s", payload.ID.String())
+	if len(idempotencyToken) > 64 {
+		idempotencyToken = idempotencyToken[:64]
+	}
+
+	return s.repo.ExecTx(ctx, func(q *db.Queries) error {
+		_, err := q.TryAcquireIdempotencyKey(ctx, db.TryAcquireIdempotencyKeyParams{
+			Token:     idempotencyToken,
+			ExpiresAt: time.Now().Add(7 * 24 * time.Hour),
+		})
+		if err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				log.Printf("[InventoryService.HandleOrderCreated] Duplicate event skipped idempotently: token=%s event_id=%s", idempotencyToken, eventID)
+				return nil
+			}
+			return fmt.Errorf("acquire idempotency key %s: %w", idempotencyToken, err)
+		}
+
+		refType := "ORDER"
+		note := fmt.Sprintf("Hold stock for OrderCreated %s (event_id=%s)", payload.OrderCode, eventID)
+		txRecord, err := q.CreateInventoryTransaction(ctx, db.CreateInventoryTransactionParams{
+			ID:              uuid.New(),
+			TransactionType: "HOLD",
+			ReferenceType:   &refType,
+			ReferenceID:     &payload.ID,
+			Note:            &note,
+			CreatedBy:       &payload.UserID,
+		})
+		if err != nil {
+			return fmt.Errorf("create HOLD inventory transaction: %w", err)
+		}
+
+		sortedQtys := make([]int32, len(sortedIDs))
+		for i, ticketTypeID := range sortedIDs {
+			sortedQtys[i] = aggregated[ticketTypeID]
+		}
+
+		heldInventories, err := q.HoldTicketInventoryStockBatch(ctx, db.HoldTicketInventoryStockBatchParams{
+			TicketTypeIDs: sortedIDs,
+			Quantities:    sortedQtys,
+		})
+		if err != nil {
+			return fmt.Errorf("batch hold stock for order_id=%s: %w", payload.ID, err)
+		}
+		if len(heldInventories) != len(sortedIDs) {
+			return fmt.Errorf("insufficient DB stock or missing inventory for order_id=%s (held=%d expected=%d)",
+				payload.ID, len(heldInventories), len(sortedIDs))
+		}
+
+		itemIDs := make([]uuid.UUID, len(heldInventories))
+		inventoryIDs := make([]uuid.UUID, len(heldInventories))
+		itemQuantities := make([]int32, len(heldInventories))
+		for i, inv := range heldInventories {
+			itemIDs[i] = uuid.New()
+			inventoryIDs[i] = inv.ID
+			itemQuantities[i] = aggregated[inv.TicketTypeID]
+		}
+
+		if err := q.CreateInventoryTransactionItemBatch(ctx, db.CreateInventoryTransactionItemBatchParams{
+			IDs:                    itemIDs,
+			InventoryTransactionID: txRecord.ID,
+			TicketInventoryIDs:     inventoryIDs,
+			Quantities:             itemQuantities,
+		}); err != nil {
+			return fmt.Errorf("batch create HOLD transaction items for order_id=%s: %w", payload.ID, err)
+		}
+
+		return nil
+	})
 }
 
 func prepareStockItems(items []dto.DeductStockItemDTO) ([]cache.DeductStockItem, error) {

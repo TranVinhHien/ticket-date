@@ -37,6 +37,17 @@ redis:
   pool_size: 20
   min_idle_conns: 5
 
+kafka:
+  brokers: ["localhost:9092"]
+  client_id: "inventory-service"
+  group_id: "inventory-service-group"
+  topics: ["order.events"]
+  max_retries: 3
+  retry_backoff: "500ms"
+  dlq_enabled: true
+  dlq_suffix: ".dlq"
+  topic_order_events: "order.events"
+
 aws:
   region: "ap-northeast-2"
   access_key_id: "YOUR_AWS_ACCESS_KEY_ID"

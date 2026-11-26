@@ -6,6 +6,7 @@ import (
 	"time"
 
 	grpcErrors "github.com/TranVinhHien/ticket-date/be/common/grpc/errors"
+	"github.com/TranVinhHien/ticket-date/be/common/kafka/events"
 	"github.com/TranVinhHien/ticket-date/be/inventory-service/internal/cache"
 	"github.com/TranVinhHien/ticket-date/be/inventory-service/internal/database/db"
 	"github.com/TranVinhHien/ticket-date/be/inventory-service/internal/handlers/dto"
@@ -754,5 +755,135 @@ func TestRestoreStock_Validation(t *testing.T) {
 		Items: []dto.DeductStockItemDTO{{TicketTypeID: uuid.New(), Quantity: 0}},
 	}); grpcErrors.Code(err) != codes.InvalidArgument {
 		t.Fatalf("expected InvalidArgument on 0 quantity, got %v", err)
+	}
+}
+
+func TestHandleOrderCreated_BatchQueries(t *testing.T) {
+	orderID := uuid.New()
+	userID := uuid.New()
+	ticket1 := uuid.MustParse("11111111-1111-1111-1111-111111111111")
+	ticket2 := uuid.MustParse("22222222-2222-2222-2222-222222222222")
+	inv1 := uuid.New()
+	inv2 := uuid.New()
+	now := time.Now()
+
+	var queryRowCalls, queryCalls, execCalls int
+	var batchTicketIDs []uuid.UUID
+	var batchQtys []int32
+	var insertedInvIDs []uuid.UUID
+	var insertedQtys []int32
+
+	mockDB := &mockDBTX{
+		queryRowFunc: func(ctx context.Context, query string, args ...interface{}) pgx.Row {
+			queryRowCalls++
+			if queryRowCalls == 1 {
+				// TryAcquireIdempotencyKey
+				return &mockRow{scanFunc: func(dest ...interface{}) error {
+					*(dest[0].(*string)) = args[0].(string)
+					return nil
+				}}
+			}
+			// CreateInventoryTransaction
+			return &mockRow{scanFunc: func(dest ...interface{}) error {
+				*(dest[0].(*uuid.UUID)) = args[0].(uuid.UUID)
+				*(dest[1].(*string)) = args[1].(string)
+				*(dest[6].(*time.Time)) = now
+				return nil
+			}}
+		},
+		queryFunc: func(ctx context.Context, query string, args ...interface{}) (pgx.Rows, error) {
+			queryCalls++
+			batchTicketIDs = args[0].([]uuid.UUID)
+			batchQtys = args[1].([]int32)
+			return &mockRows{
+				rows: [][]interface{}{
+					{inv1, ticket1, int32(100), int32(5), int32(0), nil, now, nil, now, nil, nil},
+					{inv2, ticket2, int32(100), int32(2), int32(0), nil, now, nil, now, nil, nil},
+				},
+			}, nil
+		},
+		execFunc: func(ctx context.Context, query string, args ...interface{}) (pgconn.CommandTag, error) {
+			execCalls++
+			insertedInvIDs = args[2].([]uuid.UUID)
+			insertedQtys = args[3].([]int32)
+			return pgconn.NewCommandTag("INSERT 0 2"), nil
+		},
+	}
+
+	svc := services.NewInventoryService(&testRepo{dbtx: mockDB}, nil)
+	err := svc.HandleOrderCreated(context.Background(), "outbox-1", events.OrderCreatedPayload{
+		ID:        orderID,
+		UserID:    userID,
+		OrderCode: "ORD-TEST-01",
+		Items: []events.OrderCreatedItem{
+			{TicketTypeID: ticket2, Quantity: 2},
+			{TicketTypeID: ticket1, Quantity: 3},
+			{TicketTypeID: ticket1, Quantity: 2}, // duplicate ticket_type_id should merge to 5
+		},
+	})
+	if err != nil {
+		t.Fatalf("expected no error, got: %v", err)
+	}
+	if queryRowCalls != 2 || queryCalls != 1 || execCalls != 1 {
+		t.Fatalf("expected 2 QueryRow + 1 Query + 1 Exec calls (constant 4 queries), got QueryRow=%d Query=%d Exec=%d",
+			queryRowCalls, queryCalls, execCalls)
+	}
+	if len(batchTicketIDs) != 2 || batchTicketIDs[0] != ticket1 || batchTicketIDs[1] != ticket2 {
+		t.Fatalf("unexpected sorted ticket IDs: %v", batchTicketIDs)
+	}
+	if len(batchQtys) != 2 || batchQtys[0] != 5 || batchQtys[1] != 2 {
+		t.Fatalf("unexpected merged quantities: %v", batchQtys)
+	}
+	if len(insertedInvIDs) != 2 || insertedInvIDs[0] != inv1 || insertedInvIDs[1] != inv2 {
+		t.Fatalf("unexpected inserted inventory IDs: %v", insertedInvIDs)
+	}
+	if len(insertedQtys) != 2 || insertedQtys[0] != 5 || insertedQtys[1] != 2 {
+		t.Fatalf("unexpected inserted quantities: %v", insertedQtys)
+	}
+}
+
+func TestHandleOrderCreated_BatchPartialInsufficientStockFails(t *testing.T) {
+	orderID := uuid.New()
+	ticket1 := uuid.New()
+	ticket2 := uuid.New()
+	now := time.Now()
+
+	var queryRowCalls int
+	mockDB := &mockDBTX{
+		queryRowFunc: func(ctx context.Context, query string, args ...interface{}) pgx.Row {
+			queryRowCalls++
+			if queryRowCalls == 1 {
+				return &mockRow{scanFunc: func(dest ...interface{}) error {
+					*(dest[0].(*string)) = args[0].(string)
+					return nil
+				}}
+			}
+			return &mockRow{scanFunc: func(dest ...interface{}) error {
+				*(dest[0].(*uuid.UUID)) = args[0].(uuid.UUID)
+				return nil
+			}}
+		},
+		queryFunc: func(ctx context.Context, query string, args ...interface{}) (pgx.Rows, error) {
+			// Only 1 of 2 ticket types had sufficient stock
+			return &mockRows{
+				rows: [][]interface{}{
+					{uuid.New(), ticket1, int32(100), int32(1), int32(0), nil, now, nil, now, nil, nil},
+				},
+			}, nil
+		},
+	}
+
+	svc := services.NewInventoryService(&testRepo{dbtx: mockDB}, nil)
+	err := svc.HandleOrderCreated(context.Background(), "outbox-2", events.OrderCreatedPayload{
+		ID:        orderID,
+		UserID:    uuid.New(),
+		OrderCode: "ORD-TEST-02",
+		Items: []events.OrderCreatedItem{
+			{TicketTypeID: ticket1, Quantity: 1},
+			{TicketTypeID: ticket2, Quantity: 10},
+		},
+	})
+	if err == nil {
+		t.Fatal("expected error when fewer inventories held than requested")
 	}
 }

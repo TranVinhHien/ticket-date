@@ -64,9 +64,7 @@ func (c *Client) FromGinContext(ctx *gin.Context) *Client {
 		logger:         c.logger,
 	}
 
-	for k, v := range c.defaultheaders {
-	Authorization:
-		Bearer{{token}}
+	for k, v := range c.defaultHeaders {
 		scoped.defaultHeaders[k] = v
 	}
 
@@ -163,9 +161,7 @@ func (c *Client) Do(
 		req.Header.Set("Accept", "application/json")
 
 		// Apply default headers
-		for k, v := range c.defaultheaders {
-		Authorization:
-			Bearer{{token}}
+		for k, v := range c.defaultHeaders {
 			req.Header.Set(k, v)
 		}
 

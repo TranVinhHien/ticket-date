@@ -14,6 +14,7 @@ import (
 	grpcErrors "github.com/TranVinhHien/ticket-date/be/common/grpc/errors"
 	pbEvent "github.com/TranVinhHien/ticket-date/be/common/grpc/pb/event"
 	pbInventory "github.com/TranVinhHien/ticket-date/be/common/grpc/pb/inventory"
+	"github.com/TranVinhHien/ticket-date/be/common/kafka/events"
 	"github.com/TranVinhHien/ticket-date/be/order-service/internal/cache"
 	"github.com/TranVinhHien/ticket-date/be/order-service/internal/database/db"
 	"github.com/TranVinhHien/ticket-date/be/order-service/internal/handlers/dto"
@@ -31,7 +32,6 @@ const (
 
 	DefaultCompensateTTL = 5 * time.Second
 	MaxIdempotencyKeyLen = 64
-	EventOrderCreated    = "OrderCreated"
 )
 
 type OrderService interface {
@@ -314,7 +314,7 @@ func (s *orderService) CreateOrder(ctx context.Context, userID uuid.UUID, req dt
 		// 4. Insert into outbox_event
 		_, err = q.CreateOutboxEvent(ctx, db.CreateOutboxEventParams{
 			AggregateID: createdOrder.ID.String(),
-			EventType:   EventOrderCreated,
+			EventType:   events.TopicOrderEvents,
 			Payload:     string(payloadBytes),
 			Status:      0,
 		})

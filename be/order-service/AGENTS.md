@@ -16,6 +16,9 @@ description: "Guidelines, domain boundaries, data models, and implementation sta
   4. Calls `inventory-service` via gRPC (`DeductStock` on port 50052) for atomic stock deduction.
   5. Atomically persists order, order items, and `outbox_event` inside a single DB transaction.
 - **Outbox Pattern**: Emits `OrderCreated` events via `outbox_event` table for asynchronous messaging.
+- **Cron Jobs**:
+  - `pending-orders`: Periodically inspects and fetches orders in `PENDING` status for processing.
+  - `outbox-relay`: Transactional outbox relay that polls `outbox_event` (status `0 PENDING`), claims rows to status `1 SENDING`, publishes each event to Kafka using `ev.EventType` as the destination topic, retries up to 3 times in-memory with exponential backoff before updating DB to `3 FAILED` (protects database from overload during Kafka outages), and marks `2 SUCCESS` on confirmation.
 
 ### What it does NOT do (Out of Scope)
 - **No Stock Management**: Stock state is managed exclusively by `inventory-service`.

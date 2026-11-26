@@ -451,3 +451,169 @@ func (q *Queries) ListOrdersByStatus(ctx context.Context, arg ListOrdersByStatus
 	}
 	return items, nil
 }
+
+const claimPendingOutboxEvents = `-- name: ClaimPendingOutboxEvents :many
+WITH cte AS (
+    SELECT id FROM outbox_event
+    WHERE status = 0
+    ORDER BY created_at ASC
+    LIMIT $1
+    FOR UPDATE SKIP LOCKED
+)
+UPDATE outbox_event o
+SET status = 1, updated_at = NOW()
+FROM cte
+WHERE o.id = cte.id
+RETURNING o.id, o.aggregate_id, o.event_type, o.payload, o.status, o.retry_count, o.last_error, o.created_at, o.updated_at, o.published_at
+`
+
+func (q *Queries) ClaimPendingOutboxEvents(ctx context.Context, limit int32) ([]OutboxEvent, error) {
+	rows, err := q.db.Query(ctx, claimPendingOutboxEvents, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []OutboxEvent
+	for rows.Next() {
+		var i OutboxEvent
+		if err := rows.Scan(
+			&i.ID,
+			&i.AggregateID,
+			&i.EventType,
+			&i.Payload,
+			&i.Status,
+			&i.RetryCount,
+			&i.LastError,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.PublishedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const markOutboxEventSuccess = `-- name: MarkOutboxEventSuccess :one
+UPDATE outbox_event
+SET
+    status = 2,
+    published_at = NOW(),
+    last_error = NULL,
+    updated_at = NOW()
+WHERE id = $1
+RETURNING id, aggregate_id, event_type, payload, status, retry_count, last_error, created_at, updated_at, published_at
+`
+
+func (q *Queries) MarkOutboxEventSuccess(ctx context.Context, id int64) (OutboxEvent, error) {
+	row := q.db.QueryRow(ctx, markOutboxEventSuccess, id)
+	var i OutboxEvent
+	err := row.Scan(
+		&i.ID,
+		&i.AggregateID,
+		&i.EventType,
+		&i.Payload,
+		&i.Status,
+		&i.RetryCount,
+		&i.LastError,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.PublishedAt,
+	)
+	return i, err
+}
+
+const markOutboxEventFailed = `-- name: MarkOutboxEventFailed :one
+UPDATE outbox_event
+SET
+    retry_count = retry_count + $2,
+    status = 3,
+    last_error = $3,
+    updated_at = NOW()
+WHERE id = $1
+RETURNING id, aggregate_id, event_type, payload, status, retry_count, last_error, created_at, updated_at, published_at
+`
+
+type MarkOutboxEventFailedParams struct {
+	ID         int64   `json:"id"`
+	RetryCount int16   `json:"retry_count"`
+	LastError  *string `json:"last_error"`
+}
+
+func (q *Queries) MarkOutboxEventFailed(ctx context.Context, arg MarkOutboxEventFailedParams) (OutboxEvent, error) {
+	row := q.db.QueryRow(ctx, markOutboxEventFailed, arg.ID, arg.RetryCount, arg.LastError)
+	var i OutboxEvent
+	err := row.Scan(
+		&i.ID,
+		&i.AggregateID,
+		&i.EventType,
+		&i.Payload,
+		&i.Status,
+		&i.RetryCount,
+		&i.LastError,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.PublishedAt,
+	)
+	return i, err
+}
+
+const markOutboxEventRetryOrFailed = `-- name: MarkOutboxEventRetryOrFailed :one
+UPDATE outbox_event
+SET
+    retry_count = retry_count + 1,
+    status = CASE WHEN retry_count + 1 >= $2 THEN 3 ELSE 0 END,
+    last_error = $3,
+    updated_at = NOW()
+WHERE id = $1
+RETURNING id, aggregate_id, event_type, payload, status, retry_count, last_error, created_at, updated_at, published_at
+`
+
+type MarkOutboxEventRetryOrFailedParams struct {
+	ID         int64   `json:"id"`
+	RetryCount int16   `json:"retry_count"`
+	LastError  *string `json:"last_error"`
+}
+
+func (q *Queries) MarkOutboxEventRetryOrFailed(ctx context.Context, arg MarkOutboxEventRetryOrFailedParams) (OutboxEvent, error) {
+	row := q.db.QueryRow(ctx, markOutboxEventRetryOrFailed, arg.ID, arg.RetryCount, arg.LastError)
+	var i OutboxEvent
+	err := row.Scan(
+		&i.ID,
+		&i.AggregateID,
+		&i.EventType,
+		&i.Payload,
+		&i.Status,
+		&i.RetryCount,
+		&i.LastError,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.PublishedAt,
+	)
+	return i, err
+}
+
+const recoverStaleSendingOutboxEvents = `-- name: RecoverStaleSendingOutboxEvents :execrows
+UPDATE outbox_event
+SET
+    retry_count = retry_count + 1,
+    status = CASE WHEN retry_count + 1 >= $1 THEN 3 ELSE 0 END,
+    last_error = 'recovered from stale SENDING state',
+    updated_at = NOW()
+WHERE status = 1
+  AND updated_at <= NOW() - ($2::bigint * INTERVAL '1 second')
+`
+
+type RecoverStaleSendingOutboxEventsParams struct {
+	RetryCount int16 `json:"retry_count"`
+	Seconds    int64 `json:"seconds"`
+}
+
+func (q *Queries) RecoverStaleSendingOutboxEvents(ctx context.Context, arg RecoverStaleSendingOutboxEventsParams) (int64, error) {
+	tag, err := q.db.Exec(ctx, recoverStaleSendingOutboxEvents, arg.RetryCount, arg.Seconds)
+	return tag.RowsAffected(), err
+}

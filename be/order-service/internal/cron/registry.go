@@ -1,6 +1,7 @@
 package cron
 
 import (
+	commonKafka "github.com/TranVinhHien/ticket-date/be/common/kafka"
 	"github.com/TranVinhHien/ticket-date/be/order-service/internal/config"
 	"github.com/TranVinhHien/ticket-date/be/order-service/internal/repository"
 )
@@ -10,6 +11,7 @@ import (
 func NewConfiguredManager(
 	cfg config.CronConfig,
 	repo repository.OrderRepository,
+	producer commonKafka.Producer,
 ) (*Manager, error) {
 	manager := NewManager()
 
@@ -19,6 +21,19 @@ func NewConfiguredManager(
 				repo,
 				cfg.PendingOrders.Interval,
 				cfg.PendingOrders.Batch,
+			),
+		); err != nil {
+			return nil, err
+		}
+	}
+
+	if cfg.OutboxRelay.Enabled && producer != nil {
+		if err := manager.Register(
+			NewOutboxRelayJob(
+				repo,
+				producer,
+				cfg.OutboxRelay.Interval,
+				cfg.OutboxRelay.Batch,
 			),
 		); err != nil {
 			return nil, err

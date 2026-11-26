@@ -13,7 +13,9 @@ import (
 	grpcClient "github.com/TranVinhHien/ticket-date/be/common/grpc/client"
 	pbEvent "github.com/TranVinhHien/ticket-date/be/common/grpc/pb/event"
 	pbInventory "github.com/TranVinhHien/ticket-date/be/common/grpc/pb/inventory"
+	commonKafka "github.com/TranVinhHien/ticket-date/be/common/kafka"
 	_ "github.com/TranVinhHien/ticket-date/be/order-service/docs"
+	"github.com/rs/zerolog"
 	"github.com/TranVinhHien/ticket-date/be/order-service/internal/cache"
 	"github.com/TranVinhHien/ticket-date/be/order-service/internal/config"
 	"github.com/TranVinhHien/ticket-date/be/order-service/internal/cron"
@@ -113,9 +115,37 @@ func main() {
 	// Initialize services
 	orderService := services.NewOrderService(orderRepo, cacheEngine, inventoryClient, eventClient)
 
+	// Initialize Kafka producer if brokers are configured
+	var kafkaProducer commonKafka.Producer
+	if len(config.App.Kafka.Brokers) > 0 {
+		zlog := zerolog.New(os.Stdout).With().Timestamp().Str("service", config.App.App.Name).Logger()
+		kafkaProducer, err = commonKafka.NewProducer(commonKafka.ProducerConfig{
+			Brokers:            config.App.Kafka.Brokers,
+			ClientID:           config.App.Kafka.ClientID,
+			Compression:        config.App.Kafka.Compression,
+			BatchMaxBytes:      config.App.Kafka.BatchMaxBytes,
+			LingerMs:           config.App.Kafka.LingerMs,
+			MaxBufferedRecords: config.App.Kafka.MaxBufferedRecords,
+			AllowAutoTopic:     config.App.Kafka.AllowAutoTopic,
+		}, zlog)
+		if err != nil {
+			log.Printf("Warning: failed to initialize Kafka producer: %v", err)
+		} else {
+			defer func() {
+				closeCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+				defer cancel()
+				_ = kafkaProducer.Close(closeCtx)
+			}()
+		}
+	}
+
 	// Initialize and start cron jobs
 	if config.App.Cron.Enabled {
-		cronManager, err := cron.NewConfiguredManager(config.App.Cron, orderRepo)
+		cronManager, err := cron.NewConfiguredManager(
+			config.App.Cron,
+			orderRepo,
+			kafkaProducer,
+		)
 		if err != nil {
 			log.Fatalf("Failed to initialize cron manager: %v", err)
 		}

@@ -7,6 +7,7 @@ package db
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -309,4 +310,146 @@ func (q *Queries) UpdateTicketInventoryStock(ctx context.Context, arg UpdateTick
 		&i.DeletedAt,
 	)
 	return i, err
+}
+
+const tryAcquireIdempotencyKey = `-- name: TryAcquireIdempotencyKey :one
+INSERT INTO idempotency_key (token, expires_at)
+VALUES ($1, $2)
+ON CONFLICT (token) DO NOTHING
+RETURNING token
+`
+
+type TryAcquireIdempotencyKeyParams struct {
+	Token     string    `json:"token"`
+	ExpiresAt time.Time `json:"expires_at"`
+}
+
+func (q *Queries) TryAcquireIdempotencyKey(ctx context.Context, arg TryAcquireIdempotencyKeyParams) (string, error) {
+	row := q.db.QueryRow(ctx, tryAcquireIdempotencyKey, arg.Token, arg.ExpiresAt)
+	var token string
+	err := row.Scan(&token)
+	return token, err
+}
+
+const holdTicketInventoryStock = `-- name: HoldTicketInventoryStock :one
+UPDATE ticket_inventories
+SET
+    held_quantity = held_quantity + $2,
+    updated_at = NOW()
+WHERE ticket_type_id = $1
+  AND deleted_at IS NULL
+  AND held_quantity + sold_quantity + $2 <= total_quantity
+RETURNING id, ticket_type_id, total_quantity, held_quantity, sold_quantity, created_by, created_at, updated_by, updated_at, deleted_by, deleted_at
+`
+
+type HoldTicketInventoryStockParams struct {
+	TicketTypeID uuid.UUID `json:"ticket_type_id"`
+	Quantity     int32     `json:"quantity"`
+}
+
+func (q *Queries) HoldTicketInventoryStock(ctx context.Context, arg HoldTicketInventoryStockParams) (TicketInventory, error) {
+	row := q.db.QueryRow(ctx, holdTicketInventoryStock, arg.TicketTypeID, arg.Quantity)
+	var i TicketInventory
+	err := row.Scan(
+		&i.ID,
+		&i.TicketTypeID,
+		&i.TotalQuantity,
+		&i.HeldQuantity,
+		&i.SoldQuantity,
+		&i.CreatedBy,
+		&i.CreatedAt,
+		&i.UpdatedBy,
+		&i.UpdatedAt,
+		&i.DeletedBy,
+		&i.DeletedAt,
+	)
+	return i, err
+}
+
+const holdTicketInventoryStockBatch = `-- name: HoldTicketInventoryStockBatch :many
+WITH requested AS (
+    SELECT
+        unnest($1::uuid[]) AS ticket_type_id,
+        unnest($2::int[]) AS qty
+    ORDER BY 1
+)
+UPDATE ticket_inventories ti
+SET
+    held_quantity = ti.held_quantity + r.qty,
+    updated_at = NOW()
+FROM requested r
+WHERE ti.ticket_type_id = r.ticket_type_id
+  AND ti.deleted_at IS NULL
+  AND ti.held_quantity + ti.sold_quantity + r.qty <= ti.total_quantity
+RETURNING ti.id, ti.ticket_type_id, ti.total_quantity, ti.held_quantity, ti.sold_quantity, ti.created_by, ti.created_at, ti.updated_by, ti.updated_at, ti.deleted_by, ti.deleted_at
+`
+
+type HoldTicketInventoryStockBatchParams struct {
+	TicketTypeIDs []uuid.UUID `json:"ticket_type_ids"`
+	Quantities    []int32     `json:"quantities"`
+}
+
+func (q *Queries) HoldTicketInventoryStockBatch(ctx context.Context, arg HoldTicketInventoryStockBatchParams) ([]TicketInventory, error) {
+	rows, err := q.db.Query(ctx, holdTicketInventoryStockBatch, arg.TicketTypeIDs, arg.Quantities)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []TicketInventory
+	for rows.Next() {
+		var i TicketInventory
+		if err := rows.Scan(
+			&i.ID,
+			&i.TicketTypeID,
+			&i.TotalQuantity,
+			&i.HeldQuantity,
+			&i.SoldQuantity,
+			&i.CreatedBy,
+			&i.CreatedAt,
+			&i.UpdatedBy,
+			&i.UpdatedAt,
+			&i.DeletedBy,
+			&i.DeletedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const createInventoryTransactionItemBatch = `-- name: CreateInventoryTransactionItemBatch :exec
+INSERT INTO inventory_transaction_items (
+    id,
+    inventory_transaction_id,
+    ticket_inventory_id,
+    quantity,
+    created_at
+)
+SELECT
+    unnest($1::uuid[]),
+    $2,
+    unnest($3::uuid[]),
+    unnest($4::int[]),
+    NOW()
+`
+
+type CreateInventoryTransactionItemBatchParams struct {
+	IDs                    []uuid.UUID `json:"ids"`
+	InventoryTransactionID uuid.UUID   `json:"inventory_transaction_id"`
+	TicketInventoryIDs     []uuid.UUID `json:"ticket_inventory_ids"`
+	Quantities             []int32     `json:"quantities"`
+}
+
+func (q *Queries) CreateInventoryTransactionItemBatch(ctx context.Context, arg CreateInventoryTransactionItemBatchParams) error {
+	_, err := q.db.Exec(ctx, createInventoryTransactionItemBatch,
+		arg.IDs,
+		arg.InventoryTransactionID,
+		arg.TicketInventoryIDs,
+		arg.Quantities,
+	)
+	return err
 }
