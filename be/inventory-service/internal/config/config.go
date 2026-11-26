@@ -20,6 +20,7 @@ type Config struct {
 	Redis            RedisConfig            `mapstructure:"redis"`
 	ExternalServices ExternalServicesConfig `mapstructure:"external_services"`
 	AWS              AWSConfig              `mapstructure:"aws"`
+	Cron             CronConfig             `mapstructure:"cron"`
 }
 
 type AppMetadataConfig struct {
@@ -48,15 +49,18 @@ type LoggerConfig struct {
 }
 
 type KafkaConfig struct {
-	Brokers          []string      `mapstructure:"brokers"`
-	ClientID         string        `mapstructure:"client_id"`
-	GroupID          string        `mapstructure:"group_id"`
-	Topics           []string      `mapstructure:"topics"`
-	MaxRetries       int           `mapstructure:"max_retries"`
-	RetryBackoff     time.Duration `mapstructure:"retry_backoff"`
-	DLQEnabled       bool          `mapstructure:"dlq_enabled"`
-	DLQSuffix        string        `mapstructure:"dlq_suffix"`
-	TopicOrderEvents string        `mapstructure:"topic_order_events"`
+	Brokers            []string      `mapstructure:"brokers"`
+	ClientID           string        `mapstructure:"client_id"`
+	GroupID            string        `mapstructure:"group_id"`
+	MaxRetries         int           `mapstructure:"max_retries"`
+	RetryBackoff       time.Duration `mapstructure:"retry_backoff"`
+	DLQEnabled         bool          `mapstructure:"dlq_enabled"`
+	DLQSuffix          string        `mapstructure:"dlq_suffix"`
+	Compression        string        `mapstructure:"compression"`
+	BatchMaxBytes      int32         `mapstructure:"batch_max_bytes"`
+	LingerMs           int           `mapstructure:"linger_ms"`
+	MaxBufferedRecords int           `mapstructure:"max_buffered_records"`
+	AllowAutoTopic     bool          `mapstructure:"allow_auto_topic"`
 }
 
 type CockroachConfig struct {
@@ -99,6 +103,17 @@ type AWSConfig struct {
 	AccessKeyID     string `mapstructure:"access_key_id"`
 	SecretAccessKey string `mapstructure:"secret_access_key"`
 	BucketName      string `mapstructure:"bucket_name"`
+}
+
+type CronJobConfig struct {
+	Enabled  bool          `mapstructure:"enabled"`
+	Interval time.Duration `mapstructure:"interval"`
+	Batch    int32         `mapstructure:"batch"`
+}
+
+type CronConfig struct {
+	Enabled     bool          `mapstructure:"enabled"`
+	OutboxRelay CronJobConfig `mapstructure:"outbox_relay"`
 }
 
 var App Config
@@ -181,6 +196,10 @@ func LoadConfig(path string) (*Config, error) {
 	v.SetDefault("redis.dial_timeout", 5*time.Second)
 	v.SetDefault("redis.read_timeout", 3*time.Second)
 	v.SetDefault("redis.write_timeout", 3*time.Second)
+	v.SetDefault("cron.enabled", true)
+	v.SetDefault("cron.outbox_relay.enabled", true)
+	v.SetDefault("cron.outbox_relay.interval", 2*time.Second)
+	v.SetDefault("cron.outbox_relay.batch", 1000)
 
 	// Bind environment variables for Docker Compose and K8s Secrets
 	_ = v.BindEnv("http_server.port", "PORT", "SERVER_PORT", "HTTP_SERVER_PORT")
@@ -203,6 +222,10 @@ func LoadConfig(path string) (*Config, error) {
 	_ = v.BindEnv("aws.access_key_id", "AWS_ACCESS_KEY_ID")
 	_ = v.BindEnv("aws.secret_access_key", "AWS_SECRET_ACCESS_KEY")
 	_ = v.BindEnv("aws.bucket_name", "AWS_BUCKET_NAME", "S3_BUCKET_NAME")
+	_ = v.BindEnv("cron.enabled", "CRON_ENABLED")
+	_ = v.BindEnv("cron.outbox_relay.enabled", "CRON_OUTBOX_RELAY_ENABLED")
+	_ = v.BindEnv("cron.outbox_relay.interval", "CRON_OUTBOX_RELAY_INTERVAL")
+	_ = v.BindEnv("cron.outbox_relay.batch", "CRON_OUTBOX_RELAY_BATCH")
 
 	if err := v.ReadInConfig(); err != nil {
 		if !os.IsNotExist(err) && !strings.Contains(err.Error(), "no such file") {

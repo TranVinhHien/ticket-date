@@ -18,8 +18,8 @@ const (
 	OutboxStatusSuccess int16 = 2
 	OutboxStatusFailed  int16 = 3
 
-	defaultOutboxInterval   = 2 * time.Second
-	defaultOutboxBatch      = int32(100)
+	defaultOutboxInterval   = 1 * time.Second
+	defaultOutboxBatch      = int32(1000)
 	defaultOutboxMaxRetries = int16(3)
 	defaultRetryBackoff     = 100 * time.Millisecond
 	defaultStaleSendingSec  = int64(120)

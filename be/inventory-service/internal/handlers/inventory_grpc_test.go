@@ -49,6 +49,10 @@ func (m *mockInventoryService) HandleOrderCreated(ctx context.Context, eventID s
 	return nil
 }
 
+func (m *mockInventoryService) RecordOrderReservationFailed(ctx context.Context, orderID uuid.UUID, message string) error {
+	return nil
+}
+
 func TestInventoryGRPCHandler_DeductStock_Success(t *testing.T) {
 	ticketID := uuid.New()
 	mockSvc := &mockInventoryService{

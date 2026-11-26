@@ -17,6 +17,7 @@ type Order struct {
 	TotalAmount int64      `json:"total_amount"`
 	Currency    string     `json:"currency"`
 	Status      string     `json:"status"`
+	Message     *string    `json:"message"`
 	ExpiresAt   *time.Time `json:"expires_at"`
 	PaidAt      *time.Time `json:"paid_at"`
 	CreatedBy   *uuid.UUID `json:"created_by"`

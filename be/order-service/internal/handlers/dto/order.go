@@ -51,6 +51,7 @@ type OrderResponse struct {
 	TotalAmount int64               `json:"total_amount"`
 	Currency    string              `json:"currency"`
 	Status      string              `json:"status"`
+	Message     *string             `json:"message,omitempty"`
 	ExpiresAt   *time.Time          `json:"expires_at"`
 	PaidAt      *time.Time          `json:"paid_at"`
 	Items       []OrderItemResponse `json:"items,omitempty"`

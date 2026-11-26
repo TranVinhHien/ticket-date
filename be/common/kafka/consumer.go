@@ -16,6 +16,26 @@ import (
 // Returning an error triggers retries and (if configured) DLQ routing; returning nil commits the offset.
 type HandlerFunc func(ctx context.Context, env *EventEnvelope) error
 
+type retryStateKey struct{}
+
+type retryState struct {
+	attempt    int
+	maxRetries int
+}
+
+// IsFinalRetryAttempt reports whether the current handler invocation is the last retry attempt
+// (or is being invoked outside a retry loop).
+func IsFinalRetryAttempt(ctx context.Context) bool {
+	if ctx == nil {
+		return true
+	}
+	state, ok := ctx.Value(retryStateKey{}).(retryState)
+	if !ok {
+		return true
+	}
+	return state.attempt >= state.maxRetries
+}
+
 // Consumer defines the shared Kafka consumer contract for all microservices.
 type Consumer interface {
 	RegisterHandler(eventType string, handler HandlerFunc)
@@ -317,7 +337,11 @@ func (c *franzConsumer) handleRecordWithRetry(ctx context.Context, rec *kgo.Reco
 			backoff *= 2
 		}
 
-		lastErr = handler(ctx, env)
+		attemptCtx := context.WithValue(ctx, retryStateKey{}, retryState{
+			attempt:    attempt,
+			maxRetries: c.cfg.MaxRetries,
+		})
+		lastErr = handler(attemptCtx, env)
 		if lastErr == nil {
 			if c.metricsHook != nil {
 				c.metricsHook(rec.Topic, env.EventType, nil, time.Since(start))

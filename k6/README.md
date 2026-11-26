@@ -278,3 +278,21 @@ Lỗi Nghiệp vụ (business_errors_total):
 
 > [!TIP]
 > Để tránh hết inventory khi chạy nhiều lần, hãy đặt `INVENTORY_QTY` đủ lớn (ví dụ: `VUS × DURATION_seconds × 2 / avg_iter_seconds`). Hoặc dùng API Update Batch Stock để nạp thêm vé.
+k6 run k6/ticket-booking.test.js: Chạy script load test kịch bản đặt vé (10 bước API calls mỗi vòng lặp).
+
+  
+--env TEST_DATA_FILE=k6/setup/test-data.json: Đường dẫn tới file JSON chứa dữ liệu test (token user, event_id, ticket_type_id, ...) được load vào SharedArray để dùng chung cho các Virtual Users. Mặc định là k6/setup/test-data.json.
+
+  
+--env VUS=500: Số lượng Virtual Users (người dùng ảo chạy đồng thời tối đa) đạt được trong giai đoạn tải chính. Mặc định là 10.
+
+  
+--env RAMP_UP=60s: Thời gian tăng dần số lượng VUs từ 0 lên 500 (stage 1 của executor ramping-vus) để hệ thống làm nóng và tăng tải từ từ thay vì dồn 500 user cùng lúc. Mặc định là 10s.
+
+  
+--env DURATION=5m: Thời gian duy trì tải ổn định ở mức 500 VUs (stage 2, ngay sau khi RAMP_UP kết thúc). Sau 5 phút này, script tự động có thêm 10s giảm tải (target: 0) ở cuối bài test. Mặc định là 60s.
+
+  
+--env THINK_TIME=0.5: Thời gian nghỉ (tính bằng giây, ở đây là 0.5s) mô phỏng khoảng dừng thao tác của người dùng thật giữa các bước gọi API (sleep(THINK_TIME)). Mặc định là 1 giây.
+
+  k6 run k6/ticket-booking.test.js --env TEST_DATA_FILE=setup/test-data.json --env VUS=1000 --env RAMP_UP=60s --env DURATION=90s --env THINK_TIME=0.5

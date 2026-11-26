@@ -20,6 +20,7 @@ import (
 	"github.com/TranVinhHien/ticket-date/be/order-service/internal/handlers/dto"
 	"github.com/TranVinhHien/ticket-date/be/order-service/internal/repository"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -39,6 +40,8 @@ type OrderService interface {
 	GetOrderByID(ctx context.Context, id uuid.UUID) (*dto.OrderResponse, error)
 	GetOrderByIDForUser(ctx context.Context, id uuid.UUID, userID uuid.UUID) (*dto.OrderResponse, error)
 	ListMyOrders(ctx context.Context, userID uuid.UUID, page, limit int) ([]dto.OrderResponse, int64, error)
+	HandleInventoryReserved(ctx context.Context, eventID string, payload events.InventoryReservedPayload) error
+	HandleInventoryReservationFailed(ctx context.Context, eventID string, payload events.InventoryReservationFailedPayload) error
 }
 
 type orderService struct {
@@ -298,6 +301,7 @@ func (s *orderService) CreateOrder(ctx context.Context, userID uuid.UUID, req dt
 			TotalAmount: createdOrder.TotalAmount,
 			Currency:    createdOrder.Currency,
 			Status:      createdOrder.Status,
+			Message:     createdOrder.Message,
 			ExpiresAt:   createdOrder.ExpiresAt,
 			PaidAt:      createdOrder.PaidAt,
 			Items:       itemResponses,
@@ -439,6 +443,7 @@ func (s *orderService) GetOrderByID(ctx context.Context, id uuid.UUID) (*dto.Ord
 		TotalAmount: order.TotalAmount,
 		Currency:    order.Currency,
 		Status:      order.Status,
+		Message:     order.Message,
 		ExpiresAt:   order.ExpiresAt,
 		PaidAt:      order.PaidAt,
 		Items:       itemResponses,
@@ -525,6 +530,7 @@ func (s *orderService) ListMyOrders(ctx context.Context, userID uuid.UUID, page,
 			TotalAmount: order.TotalAmount,
 			Currency:    order.Currency,
 			Status:      order.Status,
+			Message:     order.Message,
 			ExpiresAt:   order.ExpiresAt,
 			PaidAt:      order.PaidAt,
 			Items:       itemResponses,
@@ -534,4 +540,61 @@ func (s *orderService) ListMyOrders(ctx context.Context, userID uuid.UUID, page,
 	}
 
 	return orderResponses, total, nil
+}
+
+// HandleInventoryReserved updates a PENDING order to RESERVED upon receiving inventory.reserved.
+func (s *orderService) HandleInventoryReserved(ctx context.Context, eventID string, payload events.InventoryReservedPayload) error {
+	if payload.OrderID == uuid.Nil {
+		return fmt.Errorf("invalid order_id in %s event", events.EventInventoryReserved)
+	}
+	if s.repo == nil || s.repo.Queries() == nil {
+		return errors.New("database queries not initialized")
+	}
+
+	updated, err := s.repo.Queries().MarkOrderReserved(ctx, payload.OrderID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			log.Printf("[OrderService.HandleInventoryReserved] Skipped update (order not found or not PENDING): order_id=%s event_id=%s",
+				payload.OrderID, eventID)
+			return nil
+		}
+		return fmt.Errorf("mark order RESERVED order_id=%s: %w", payload.OrderID, err)
+	}
+
+	log.Printf("[OrderService.HandleInventoryReserved] Order updated to %s: order_id=%s event_id=%s",
+		updated.Status, updated.ID, eventID)
+	return nil
+}
+
+// HandleInventoryReservationFailed updates a PENDING order to FAILED with message upon receiving inventory.reservation_fail.
+func (s *orderService) HandleInventoryReservationFailed(ctx context.Context, eventID string, payload events.InventoryReservationFailedPayload) error {
+	if payload.OrderID == uuid.Nil {
+		return fmt.Errorf("invalid order_id in %s event", events.EventInventoryReservationFailed)
+	}
+	if s.repo == nil || s.repo.Queries() == nil {
+		return errors.New("database queries not initialized")
+	}
+
+	msg := strings.TrimSpace(payload.Message)
+	var msgPtr *string
+	if msg != "" {
+		msgPtr = &msg
+	}
+
+	updated, err := s.repo.Queries().MarkOrderFailed(ctx, db.MarkOrderFailedParams{
+		ID:      payload.OrderID,
+		Message: msgPtr,
+	})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			log.Printf("[OrderService.HandleInventoryReservationFailed] Skipped update (order not found or not PENDING): order_id=%s event_id=%s",
+				payload.OrderID, eventID)
+			return nil
+		}
+		return fmt.Errorf("mark order FAILED order_id=%s: %w", payload.OrderID, err)
+	}
+
+	log.Printf("[OrderService.HandleInventoryReservationFailed] Order updated to %s: order_id=%s event_id=%s message=%q",
+		updated.Status, updated.ID, eventID, msg)
+	return nil
 }

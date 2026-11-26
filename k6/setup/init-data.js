@@ -36,9 +36,9 @@ const EVENT_URL = process.env.EVENT_URL || BASE_URL;
 const INVENTORY_URL = process.env.INVENTORY_URL || BASE_URL;
 const ORDER_URL = process.env.ORDER_URL || BASE_URL;
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "Admin@123456";
-const NUM_EVENTS = parseInt(process.env.NUM_EVENTS || "1", 10);
+const NUM_EVENTS = parseInt(process.env.NUM_EVENTS || "4", 10);
 const NUM_USERS = parseInt(process.env.NUM_USERS || "10", 10);
-const INVENTORY_QTY = parseInt(process.env.INVENTORY_QTY || "10000", 10);
+const INVENTORY_QTY = parseInt(process.env.INVENTORY_QTY || "100", 10);
 
 const OUTPUT_FILE = path.join(__dirname, "test-data.json");
 

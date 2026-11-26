@@ -783,11 +783,24 @@ func TestHandleOrderCreated_BatchQueries(t *testing.T) {
 					return nil
 				}}
 			}
-			// CreateInventoryTransaction
+			if queryRowCalls == 2 {
+				// CreateInventoryTransaction
+				return &mockRow{scanFunc: func(dest ...interface{}) error {
+					*(dest[0].(*uuid.UUID)) = args[0].(uuid.UUID)
+					*(dest[1].(*string)) = args[1].(string)
+					*(dest[6].(*time.Time)) = now
+					return nil
+				}}
+			}
+			// CreateOutboxEvent (inventory.reserved)
 			return &mockRow{scanFunc: func(dest ...interface{}) error {
-				*(dest[0].(*uuid.UUID)) = args[0].(uuid.UUID)
-				*(dest[1].(*string)) = args[1].(string)
-				*(dest[6].(*time.Time)) = now
+				*(dest[0].(*int64)) = 1
+				*(dest[1].(*string)) = args[0].(string)
+				*(dest[2].(*string)) = args[1].(string)
+				*(dest[3].(*string)) = args[2].(string)
+				*(dest[4].(*int16)) = args[3].(int16)
+				*(dest[7].(*time.Time)) = now
+				*(dest[8].(*time.Time)) = now
 				return nil
 			}}
 		},
@@ -824,8 +837,8 @@ func TestHandleOrderCreated_BatchQueries(t *testing.T) {
 	if err != nil {
 		t.Fatalf("expected no error, got: %v", err)
 	}
-	if queryRowCalls != 2 || queryCalls != 1 || execCalls != 1 {
-		t.Fatalf("expected 2 QueryRow + 1 Query + 1 Exec calls (constant 4 queries), got QueryRow=%d Query=%d Exec=%d",
+	if queryRowCalls != 3 || queryCalls != 1 || execCalls != 1 {
+		t.Fatalf("expected 3 QueryRow + 1 Query + 1 Exec calls (constant 5 queries), got QueryRow=%d Query=%d Exec=%d",
 			queryRowCalls, queryCalls, execCalls)
 	}
 	if len(batchTicketIDs) != 2 || batchTicketIDs[0] != ticket1 || batchTicketIDs[1] != ticket2 {

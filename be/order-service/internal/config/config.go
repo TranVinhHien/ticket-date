@@ -51,14 +51,18 @@ type LoggerConfig struct {
 }
 
 type KafkaConfig struct {
-	Brokers            []string `mapstructure:"brokers"`
-	ClientID           string   `mapstructure:"client_id"`
-	Compression        string   `mapstructure:"compression"`
-	BatchMaxBytes      int32    `mapstructure:"batch_max_bytes"`
-	LingerMs           int      `mapstructure:"linger_ms"`
-	MaxBufferedRecords int      `mapstructure:"max_buffered_records"`
-	AllowAutoTopic     bool     `mapstructure:"allow_auto_topic"`
-	TopicOrderEvents   string   `mapstructure:"topic_order_events"`
+	Brokers            []string      `mapstructure:"brokers"`
+	ClientID           string        `mapstructure:"client_id"`
+	GroupID            string        `mapstructure:"group_id"`
+	MaxRetries         int           `mapstructure:"max_retries"`
+	RetryBackoff       time.Duration `mapstructure:"retry_backoff"`
+	DLQEnabled         bool          `mapstructure:"dlq_enabled"`
+	DLQSuffix          string        `mapstructure:"dlq_suffix"`
+	Compression        string        `mapstructure:"compression"`
+	BatchMaxBytes      int32         `mapstructure:"batch_max_bytes"`
+	LingerMs           int           `mapstructure:"linger_ms"`
+	MaxBufferedRecords int           `mapstructure:"max_buffered_records"`
+	AllowAutoTopic     bool          `mapstructure:"allow_auto_topic"`
 }
 
 type CockroachConfig struct {
@@ -198,7 +202,12 @@ func LoadConfig(path string) (*Config, error) {
 	v.SetDefault("cron.enabled", true)
 	v.SetDefault("cron.pending_orders.enabled", true)
 	v.SetDefault("cron.pending_orders.interval", 1*time.Minute)
-	v.SetDefault("cron.pending_orders.batch", 100)
+	v.SetDefault("cron.pending_orders.batch", 1000)
+	v.SetDefault("kafka.group_id", "order-service-group")
+	v.SetDefault("kafka.max_retries", 3)
+	v.SetDefault("kafka.retry_backoff", 500*time.Millisecond)
+	v.SetDefault("kafka.dlq_enabled", true)
+	v.SetDefault("kafka.dlq_suffix", ".dlq")
 
 	// Bind environment variables for Docker Compose and K8s Secrets
 	_ = v.BindEnv("http_server.port", "PORT", "SERVER_PORT", "HTTP_SERVER_PORT")

@@ -156,3 +156,24 @@ SET
     updated_at = NOW()
 WHERE status = 1
   AND updated_at <= NOW() - ($2::bigint * INTERVAL '1 second');
+
+-- name: MarkOrderReserved :one
+UPDATE orders
+SET
+    status = 'RESERVED',
+    updated_at = NOW()
+WHERE id = $1
+  AND status = 'PENDING'
+  AND deleted_at IS NULL
+RETURNING *;
+
+-- name: MarkOrderFailed :one
+UPDATE orders
+SET
+    status = 'FAILED',
+    message = $2,
+    updated_at = NOW()
+WHERE id = $1
+  AND status = 'PENDING'
+  AND deleted_at IS NULL
+RETURNING *;

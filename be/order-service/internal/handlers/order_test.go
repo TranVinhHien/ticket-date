@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/TranVinhHien/ticket-date/be/common/kafka/events"
 	"github.com/TranVinhHien/ticket-date/be/order-service/internal/handlers/dto"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -41,6 +42,14 @@ func (m *mockOrderService) GetOrderByIDForUser(ctx context.Context, id uuid.UUID
 
 func (m *mockOrderService) ListMyOrders(ctx context.Context, userID uuid.UUID, page, limit int) ([]dto.OrderResponse, int64, error) {
 	return []dto.OrderResponse{}, 0, nil
+}
+
+func (m *mockOrderService) HandleInventoryReserved(ctx context.Context, eventID string, payload events.InventoryReservedPayload) error {
+	return nil
+}
+
+func (m *mockOrderService) HandleInventoryReservationFailed(ctx context.Context, eventID string, payload events.InventoryReservationFailedPayload) error {
+	return nil
 }
 
 func setupTestRouter(svc *mockOrderService) *gin.Engine {

@@ -41,12 +41,22 @@ kafka:
   brokers: ["localhost:9092"]
   client_id: "inventory-service"
   group_id: "inventory-service-group"
-  topics: ["order.events"]
   max_retries: 3
   retry_backoff: "500ms"
   dlq_enabled: true
   dlq_suffix: ".dlq"
-  topic_order_events: "order.events"
+  compression: "lz4"
+  batch_max_bytes: 1048576
+  linger_ms: 10
+  max_buffered_records: 100000
+  allow_auto_topic: true
+
+cron:
+  enabled: true
+  outbox_relay:
+    enabled: true
+    interval: "2s"
+    batch: 100
 
 aws:
   region: "ap-northeast-2"

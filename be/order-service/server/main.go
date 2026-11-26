@@ -14,10 +14,12 @@ import (
 	pbEvent "github.com/TranVinhHien/ticket-date/be/common/grpc/pb/event"
 	pbInventory "github.com/TranVinhHien/ticket-date/be/common/grpc/pb/inventory"
 	commonKafka "github.com/TranVinhHien/ticket-date/be/common/kafka"
+	"github.com/TranVinhHien/ticket-date/be/common/kafka/events"
 	_ "github.com/TranVinhHien/ticket-date/be/order-service/docs"
 	"github.com/rs/zerolog"
 	"github.com/TranVinhHien/ticket-date/be/order-service/internal/cache"
 	"github.com/TranVinhHien/ticket-date/be/order-service/internal/config"
+	"github.com/TranVinhHien/ticket-date/be/order-service/internal/consumers"
 	"github.com/TranVinhHien/ticket-date/be/order-service/internal/cron"
 	"github.com/TranVinhHien/ticket-date/be/order-service/internal/database"
 	"github.com/TranVinhHien/ticket-date/be/order-service/internal/database/migrations"
@@ -136,6 +138,37 @@ func main() {
 				defer cancel()
 				_ = kafkaProducer.Close(closeCtx)
 			}()
+		}
+	}
+
+	// Initialize and start Kafka consumer for inventory events
+	if len(config.App.Kafka.Brokers) > 0 && config.App.Kafka.GroupID != "" {
+		zlog := zerolog.New(os.Stdout).With().Timestamp().Str("service", config.App.App.Name).Logger()
+		kafkaConsumer, err := commonKafka.NewConsumer(commonKafka.ConsumerConfig{
+			Brokers:      config.App.Kafka.Brokers,
+			ClientID:     config.App.Kafka.ClientID,
+			GroupID:      config.App.Kafka.GroupID,
+			Topics:       []string{events.EventInventoryReserved, events.EventInventoryReservationFailed},
+			MaxRetries:   config.App.Kafka.MaxRetries,
+			RetryBackoff: config.App.Kafka.RetryBackoff,
+			DLQEnabled:   config.App.Kafka.DLQEnabled,
+			DLQSuffix:    config.App.Kafka.DLQSuffix,
+		}, zlog)
+		if err != nil {
+			log.Printf("Warning: failed to initialize Kafka consumer: %v", err)
+		} else {
+			consumers.RegisterInventoryEventHandlers(kafkaConsumer, orderService)
+			consumerCtx, cancelConsumer := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+			defer cancelConsumer()
+			if err := kafkaConsumer.Start(consumerCtx); err != nil {
+				log.Printf("Warning: failed to start Kafka consumer: %v", err)
+			} else {
+				defer func() {
+					stopCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+					defer cancel()
+					_ = kafkaConsumer.Stop(stopCtx)
+				}()
+			}
 		}
 	}
 

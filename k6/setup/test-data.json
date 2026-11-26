@@ -4,118 +4,196 @@
   "inventory_url": "http://localhost:8000",
   "order_url": "http://localhost:8000",
   "admin": {
-    "email": "admin-k6-mwvxgwwautoxv@test.com",
+    "email": "admin-k6-mwxoe84idwdts@test.com",
     "password": "Admin@123456",
-    "user_id": "0b29ee9c-a9ae-4463-8f83-f99335641583",
-    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiMGIyOWVlOWMtYTlhZS00NDYzLThmODMtZjk5MzM1NjQxNTgzIiwiZW1haWwiOiJhZG1pbi1rNi1td3Z4Z3d3YXV0b3h2QHRlc3QuY29tIiwidXNlcl9yb2xlcyI6WyJ1c2VyIl0sImV4cCI6MTc5NTYwMjkxMiwiaWF0IjoxNzk1NTk5MzEyfQ.V5lBxRi-MzLw1WGHzT2dsV5FC1EabPPZDrLWq9k-ap0",
-    "refresh_token": "747365467d8bbedf916644fec076cb7f9823fe68d978e35b88160928f3a1313b"
+    "user_id": "a798e15e-5baa-467f-855f-11d88284290d",
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiYTc5OGUxNWUtNWJhYS00NjdmLTg1NWYtMTFkODgyODQyOTBkIiwiZW1haWwiOiJhZG1pbi1rNi1td3hvZTg0aWR3ZHRzQHRlc3QuY29tIiwidXNlcl9yb2xlcyI6WyJ1c2VyIl0sImV4cCI6MTc5NTcwODYwMywiaWF0IjoxNzk1NzA1MDAzfQ.n1jo_-MD2mz2tKX8pcyxXYu5nnHOdpULEkbcRrFtOlI",
+    "refresh_token": "60aa0982aa589a905744a90de8f93a38818bf088b2c1b84c490268d72f1b6237"
   },
-  "organizer_id": "2e2f5457-d672-4e98-8802-df2af9bfcf9d",
-  "venue_id": "7bb89872-3dd8-44a0-91c1-9f7ee48714ed",
+  "organizer_id": "b5bdde92-dbda-47c8-a777-88550f85b8cd",
+  "venue_id": "268d0f1f-24ed-4192-a371-09e922b2041c",
   "events": [
     {
-      "event_id": "3972c382-bc51-469a-bf9c-fac78a1511a5",
-      "event_slug": "summer-sonic-music-festival-mwvxgx1h9apwt",
+      "event_id": "41fadef7-f878-4c4f-aa2f-7018cb8c3172",
+      "event_slug": "summer-sonic-music-festival-mwxoe8d160gna",
       "ticket_types": [
         {
-          "id": "fe670547-8712-44ee-b5e2-e7d5e5981e53",
-          "sku": "VIP-mwvxgx1h9apwt-A",
+          "id": "ffb8ce97-d888-49fa-8c0a-4214f034d4d3",
+          "sku": "VIP-mwxoe8d160gna-A",
           "name": "VIP Standing Zone A"
         },
         {
-          "id": "dccca315-ad4c-4241-9ce2-843b9ffa03c7",
-          "sku": "GA-mwvxgx1h9apwt-B",
+          "id": "adb52a86-229a-4ee1-a6b0-5d3803df91c6",
+          "sku": "GA-mwxoe8d160gna-B",
           "name": "General Admission"
         }
       ],
       "inventories": [
         {
-          "inventory_id": "8dfb05b6-273a-4fce-ae06-0c2b5316321f",
-          "ticket_type_id": "fe670547-8712-44ee-b5e2-e7d5e5981e53"
+          "inventory_id": "86d023c3-ad17-42d9-9e79-92c37488458b",
+          "ticket_type_id": "ffb8ce97-d888-49fa-8c0a-4214f034d4d3"
         },
         {
-          "inventory_id": "8e54f98d-f266-4d14-91dd-15cb1113e4e6",
-          "ticket_type_id": "dccca315-ad4c-4241-9ce2-843b9ffa03c7"
+          "inventory_id": "f8a8bd19-5e0a-4701-94ad-b869ef7eac87",
+          "ticket_type_id": "adb52a86-229a-4ee1-a6b0-5d3803df91c6"
+        }
+      ]
+    },
+    {
+      "event_id": "904ee5c8-54f8-4ceb-8959-aa8a0a266b43",
+      "event_slug": "summer-sonic-music-festival-mwxoe8kmqw51r",
+      "ticket_types": [
+        {
+          "id": "05818814-fdd4-4496-9fef-fedfde4d698a",
+          "sku": "VIP-mwxoe8kmqw51r-A",
+          "name": "VIP Standing Zone A"
+        },
+        {
+          "id": "e977df65-c073-4164-ba8a-4c80bd64629a",
+          "sku": "GA-mwxoe8kmqw51r-B",
+          "name": "General Admission"
+        }
+      ],
+      "inventories": [
+        {
+          "inventory_id": "42f0084e-7d12-4715-9ee5-6dc57365ad72",
+          "ticket_type_id": "05818814-fdd4-4496-9fef-fedfde4d698a"
+        },
+        {
+          "inventory_id": "e71a3147-33a4-42dd-8e56-68d6454064cb",
+          "ticket_type_id": "e977df65-c073-4164-ba8a-4c80bd64629a"
+        }
+      ]
+    },
+    {
+      "event_id": "4c6fb451-9cac-4e95-b804-330a7a264815",
+      "event_slug": "summer-sonic-music-festival-mwxoe8rwpvftc",
+      "ticket_types": [
+        {
+          "id": "1c68e1aa-9d4f-447a-bc58-436692ca51a0",
+          "sku": "VIP-mwxoe8rwpvftc-A",
+          "name": "VIP Standing Zone A"
+        },
+        {
+          "id": "220fde50-03b2-4556-88db-bb8fe8b142cd",
+          "sku": "GA-mwxoe8rwpvftc-B",
+          "name": "General Admission"
+        }
+      ],
+      "inventories": [
+        {
+          "inventory_id": "c3e2e1a0-dbd0-4a1f-9888-0557487ccc91",
+          "ticket_type_id": "1c68e1aa-9d4f-447a-bc58-436692ca51a0"
+        },
+        {
+          "inventory_id": "d8dd06ab-64f7-45b4-ad13-8e9b1b16c270",
+          "ticket_type_id": "220fde50-03b2-4556-88db-bb8fe8b142cd"
+        }
+      ]
+    },
+    {
+      "event_id": "f362b3c3-364e-438b-97b0-bdb661d6a017",
+      "event_slug": "summer-sonic-music-festival-mwxoe8z0yb79q",
+      "ticket_types": [
+        {
+          "id": "48e0f73b-f78e-4121-a4d2-f6749d9adca0",
+          "sku": "VIP-mwxoe8z0yb79q-A",
+          "name": "VIP Standing Zone A"
+        },
+        {
+          "id": "79189942-d6f8-4b13-b407-f561a32d4abe",
+          "sku": "GA-mwxoe8z0yb79q-B",
+          "name": "General Admission"
+        }
+      ],
+      "inventories": [
+        {
+          "inventory_id": "9dba5032-3d5c-4d8f-8414-08db870ae605",
+          "ticket_type_id": "48e0f73b-f78e-4121-a4d2-f6749d9adca0"
+        },
+        {
+          "inventory_id": "52d0c826-7ec2-4192-a547-bd9587954acc",
+          "ticket_type_id": "79189942-d6f8-4b13-b407-f561a32d4abe"
         }
       ]
     }
   ],
   "users": [
     {
-      "email": "k6-user-mwvxgx2q9dnzl@test.com",
+      "email": "k6-user-mwxoe90zk3tkd@test.com",
       "password": "TestUser@123",
-      "user_id": "f92888f0-e8e5-407c-b6c9-31ef7acfdf33",
-      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiZjkyODg4ZjAtZThlNS00MDdjLWI2YzktMzFlZjdhY2ZkZjMzIiwiZW1haWwiOiJrNi11c2VyLW13dnhneDJxOWRuemxAdGVzdC5jb20iLCJ1c2VyX3JvbGVzIjpbInVzZXIiXSwiZXhwIjoxNzk1NjAyOTEzLCJpYXQiOjE3OTU1OTkzMTN9.US_nf3xkFStODlqWzMoRN49gyIWNcvL_DokifjTTHFE",
-      "refresh_token": "6e2392d7afe35915875ebbed61d16baa977f897b49129cf9e40eaa18b7155ab1"
+      "user_id": "3c71b19a-56e2-4847-908b-587a4e0e3704",
+      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiM2M3MWIxOWEtNTZlMi00ODQ3LTkwOGItNTg3YTRlMGUzNzA0IiwiZW1haWwiOiJrNi11c2VyLW13eG9lOTB6azN0a2RAdGVzdC5jb20iLCJ1c2VyX3JvbGVzIjpbInVzZXIiXSwiZXhwIjoxNzk1NzA4NjA0LCJpYXQiOjE3OTU3MDUwMDR9.zFAWBVMGymmugF_egVzrxg198a8WoGO2nrlhim32sbY",
+      "refresh_token": "29bd079a6666842dad814a2aa188c4acb2fb385a74c6b73fa903811b461fb625"
     },
     {
-      "email": "k6-user-mwvxgx2q4l7sb@test.com",
+      "email": "k6-user-mwxoe90zkggow@test.com",
       "password": "TestUser@123",
-      "user_id": "f1c10013-c6f0-4b0c-9463-aefd7702bc01",
-      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiZjFjMTAwMTMtYzZmMC00YjBjLTk0NjMtYWVmZDc3MDJiYzAxIiwiZW1haWwiOiJrNi11c2VyLW13dnhneDJxNGw3c2JAdGVzdC5jb20iLCJ1c2VyX3JvbGVzIjpbInVzZXIiXSwiZXhwIjoxNzk1NjAyOTEzLCJpYXQiOjE3OTU1OTkzMTN9.3ZrQKOTHMUTJjTziy91TmooP3Dz4SigQ8FitrrDn0P4",
-      "refresh_token": "437d3d7ed05e9e1ddb0b9725f177bdcbbf4bf427ca2b69ccd46fbfb4862e513f"
+      "user_id": "335ab228-3506-4b20-994d-898a7748ff59",
+      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiMzM1YWIyMjgtMzUwNi00YjIwLTk5NGQtODk4YTc3NDhmZjU5IiwiZW1haWwiOiJrNi11c2VyLW13eG9lOTB6a2dnb3dAdGVzdC5jb20iLCJ1c2VyX3JvbGVzIjpbInVzZXIiXSwiZXhwIjoxNzk1NzA4NjA0LCJpYXQiOjE3OTU3MDUwMDR9.gtI4SZmwz3dyw12OjWFLlEWPx9Ic4nW1-PkPnZmk9UE",
+      "refresh_token": "b8d1c627af17e682fc1c366f0f3aeee0d4c3e02fffcd41fe2420416d0614d9f8"
     },
     {
-      "email": "k6-user-mwvxgx2rjxvwj@test.com",
+      "email": "k6-user-mwxoe910x1uq8@test.com",
       "password": "TestUser@123",
-      "user_id": "03d40b6c-b0ce-4dd4-ba6a-644b25972c4e",
-      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiMDNkNDBiNmMtYjBjZS00ZGQ0LWJhNmEtNjQ0YjI1OTcyYzRlIiwiZW1haWwiOiJrNi11c2VyLW13dnhneDJyanh2d2pAdGVzdC5jb20iLCJ1c2VyX3JvbGVzIjpbInVzZXIiXSwiZXhwIjoxNzk1NjAyOTEzLCJpYXQiOjE3OTU1OTkzMTN9.LaznziTdiSYXAPr9N1970_oqpvcqSQ9mVrL9DuPHNLk",
-      "refresh_token": "ee4b71ff75887af3e49acf49f2a19dfc7cf04e8c9acc6e5d36d932936b10edb6"
+      "user_id": "8839d8e9-4bd2-4f9f-81b5-d5cae7428496",
+      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiODgzOWQ4ZTktNGJkMi00ZjlmLTgxYjUtZDVjYWU3NDI4NDk2IiwiZW1haWwiOiJrNi11c2VyLW13eG9lOTEweDF1cThAdGVzdC5jb20iLCJ1c2VyX3JvbGVzIjpbInVzZXIiXSwiZXhwIjoxNzk1NzA4NjA0LCJpYXQiOjE3OTU3MDUwMDR9.4Xt1QdgCvrmObs4l8_j0XSrimtqaIkQ6ZaE6aLD2JvM",
+      "refresh_token": "73692e7b422a7e3739576cc0b938eadb4d112cac2e97f29ccbf36ed8830e3504"
     },
     {
-      "email": "k6-user-mwvxgx2r8x4d3@test.com",
+      "email": "k6-user-mwxoe910edwgu@test.com",
       "password": "TestUser@123",
-      "user_id": "24ec0d3f-1b3b-4eb5-9af8-18faf4c225a0",
-      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiMjRlYzBkM2YtMWIzYi00ZWI1LTlhZjgtMThmYWY0YzIyNWEwIiwiZW1haWwiOiJrNi11c2VyLW13dnhneDJyOHg0ZDNAdGVzdC5jb20iLCJ1c2VyX3JvbGVzIjpbInVzZXIiXSwiZXhwIjoxNzk1NjAyOTEzLCJpYXQiOjE3OTU1OTkzMTN9.ZDjrhqWFHb4Rz7-FrDMUhmXdwuWFeDhtw4jYdx7qh8Q",
-      "refresh_token": "aaede33d68287ea7474d6f248915029cb80d48639c3cbcbcb321a95485770791"
+      "user_id": "862e2870-6598-4319-80f6-045203fed70a",
+      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiODYyZTI4NzAtNjU5OC00MzE5LTgwZjYtMDQ1MjAzZmVkNzBhIiwiZW1haWwiOiJrNi11c2VyLW13eG9lOTEwZWR3Z3VAdGVzdC5jb20iLCJ1c2VyX3JvbGVzIjpbInVzZXIiXSwiZXhwIjoxNzk1NzA4NjA0LCJpYXQiOjE3OTU3MDUwMDR9.C1QKw9pDTTlgbqR1H6iQX2EX9huGqcw1pJHUra9mGTA",
+      "refresh_token": "67575947a5219dc91a1df6e949b2a3b279f797575d3b263a1f7cabb146a147b4"
     },
     {
-      "email": "k6-user-mwvxgx2r9w56d@test.com",
+      "email": "k6-user-mwxoe910orjw9@test.com",
       "password": "TestUser@123",
-      "user_id": "cb6b20df-cb2f-4fed-8b0a-5d681cd72d6f",
-      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiY2I2YjIwZGYtY2IyZi00ZmVkLThiMGEtNWQ2ODFjZDcyZDZmIiwiZW1haWwiOiJrNi11c2VyLW13dnhneDJyOXc1NmRAdGVzdC5jb20iLCJ1c2VyX3JvbGVzIjpbInVzZXIiXSwiZXhwIjoxNzk1NjAyOTEzLCJpYXQiOjE3OTU1OTkzMTN9.y6dooIyW0TcLFYsPTK0WFLCXsuZjbIJyNWIVGaTrg7k",
-      "refresh_token": "67acf61c82f01389ccd2e41f143e5547daf81d63abcf1da58a79afadf69159cb"
+      "user_id": "70cbf310-72af-4a8d-b581-45f27a2b3141",
+      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiNzBjYmYzMTAtNzJhZi00YThkLWI1ODEtNDVmMjdhMmIzMTQxIiwiZW1haWwiOiJrNi11c2VyLW13eG9lOTEwb3JqdzlAdGVzdC5jb20iLCJ1c2VyX3JvbGVzIjpbInVzZXIiXSwiZXhwIjoxNzk1NzA4NjA0LCJpYXQiOjE3OTU3MDUwMDR9.ZkScXv8JK1buXh3g5ikZj2atswfW3r1hXIeqH_CuuMQ",
+      "refresh_token": "d53bcf0ba8c16c718f40346c925363e2c7d7daa6e5f82e53ea7612fd99bc04aa"
     },
     {
-      "email": "k6-user-mwvxgxh7jom16@test.com",
+      "email": "k6-user-mwxoe9gvx7hm4@test.com",
       "password": "TestUser@123",
-      "user_id": "5e9fb497-0f56-4b12-8f89-a94c4dc79300",
-      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiNWU5ZmI0OTctMGY1Ni00YjEyLThmODktYTk0YzRkYzc5MzAwIiwiZW1haWwiOiJrNi11c2VyLW13dnhneGg3am9tMTZAdGVzdC5jb20iLCJ1c2VyX3JvbGVzIjpbInVzZXIiXSwiZXhwIjoxNzk1NjAyOTEzLCJpYXQiOjE3OTU1OTkzMTN9.sKDzsPM_bxRVPtK9Ci3SnOtKq8EYvNeQ0I6cEMgtIrA",
-      "refresh_token": "fbbb0fa475eb65d76229ee3440bc3a2a0f022dfbb2e4a7946d3efca75e6dbfcb"
+      "user_id": "86bc4631-67f7-44ac-ae9b-eeab32481050",
+      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiODZiYzQ2MzEtNjdmNy00NGFjLWFlOWItZWVhYjMyNDgxMDUwIiwiZW1haWwiOiJrNi11c2VyLW13eG9lOWd2eDdobTRAdGVzdC5jb20iLCJ1c2VyX3JvbGVzIjpbInVzZXIiXSwiZXhwIjoxNzk1NzA4NjA1LCJpYXQiOjE3OTU3MDUwMDV9.Ac5TTA0U3sGPVCxNlZlr25vNry-G4CsQOFqCMHfzlb4",
+      "refresh_token": "9b1cb5d9ce77c76aff04e3c8ef447b3fe56174d53a6b618aec478ee161a0be3e"
     },
     {
-      "email": "k6-user-mwvxgxh7s6vu3@test.com",
+      "email": "k6-user-mwxoe9gv8vr99@test.com",
       "password": "TestUser@123",
-      "user_id": "9ccca9c5-c953-46d7-8e30-abfc512e3e39",
-      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiOWNjY2E5YzUtYzk1My00NmQ3LThlMzAtYWJmYzUxMmUzZTM5IiwiZW1haWwiOiJrNi11c2VyLW13dnhneGg3czZ2dTNAdGVzdC5jb20iLCJ1c2VyX3JvbGVzIjpbInVzZXIiXSwiZXhwIjoxNzk1NjAyOTEzLCJpYXQiOjE3OTU1OTkzMTN9.gG8-F7Y21tQ1_GIdm0XNVTrwMEed-Dh3JVZbgTXnMLE",
-      "refresh_token": "7432e0dd016f5a6dfa22f7920bbf0e749accaf906281777f78c01460c9833227"
+      "user_id": "e6e62455-6da9-4fa2-ad72-b5f4e91f84a0",
+      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiZTZlNjI0NTUtNmRhOS00ZmEyLWFkNzItYjVmNGU5MWY4NGEwIiwiZW1haWwiOiJrNi11c2VyLW13eG9lOWd2OHZyOTlAdGVzdC5jb20iLCJ1c2VyX3JvbGVzIjpbInVzZXIiXSwiZXhwIjoxNzk1NzA4NjA1LCJpYXQiOjE3OTU3MDUwMDV9.tvLjLbagwEnrGKFdLHH9Fyq3g73XCivcvCIVvU4sk8w",
+      "refresh_token": "5bcba935512e1e80815397733f11570362e677722ccb3fbb9aa428bdf32abea7"
     },
     {
-      "email": "k6-user-mwvxgxh7cx6wl@test.com",
+      "email": "k6-user-mwxoe9gvx496s@test.com",
       "password": "TestUser@123",
-      "user_id": "71df4876-d8b3-4b60-8309-e04b0dfd70b5",
-      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiNzFkZjQ4NzYtZDhiMy00YjYwLTgzMDktZTA0YjBkZmQ3MGI1IiwiZW1haWwiOiJrNi11c2VyLW13dnhneGg3Y3g2d2xAdGVzdC5jb20iLCJ1c2VyX3JvbGVzIjpbInVzZXIiXSwiZXhwIjoxNzk1NjAyOTEzLCJpYXQiOjE3OTU1OTkzMTN9.vIYg2ewwxT5KetgUCWANIvNxnvUyKoIVUWszNRIlRl4",
-      "refresh_token": "60266dfc372dc09bb24f51a6164676e51beefe46ce4fea3ac71df4c5d7025d8d"
+      "user_id": "81034a81-e470-44b4-bdf6-6ef4b7b40417",
+      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiODEwMzRhODEtZTQ3MC00NGI0LWJkZjYtNmVmNGI3YjQwNDE3IiwiZW1haWwiOiJrNi11c2VyLW13eG9lOWd2eDQ5NnNAdGVzdC5jb20iLCJ1c2VyX3JvbGVzIjpbInVzZXIiXSwiZXhwIjoxNzk1NzA4NjA1LCJpYXQiOjE3OTU3MDUwMDV9.be21nzjeSL_aPlOnsrChFlPiDoQOAtuNiuy3IGTs0vY",
+      "refresh_token": "214d3d2d9ecdffd32709b7884ba943ac81545b05ea50892a6ef40e2b271c7d5d"
     },
     {
-      "email": "k6-user-mwvxgxh7f8vha@test.com",
+      "email": "k6-user-mwxoe9gvusj56@test.com",
       "password": "TestUser@123",
-      "user_id": "fadf9756-976d-4809-ba3d-5796acf0d83f",
-      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiZmFkZjk3NTYtOTc2ZC00ODA5LWJhM2QtNTc5NmFjZjBkODNmIiwiZW1haWwiOiJrNi11c2VyLW13dnhneGg3Zjh2aGFAdGVzdC5jb20iLCJ1c2VyX3JvbGVzIjpbInVzZXIiXSwiZXhwIjoxNzk1NjAyOTEzLCJpYXQiOjE3OTU1OTkzMTN9.ncgOl-lYAO5qQn2ylO8rrHPEC8dqDGl2e8r5HI3-jVY",
-      "refresh_token": "c6e920ac661fbe8852516d1573948bdca705e04f387426e599d16b22c50db768"
+      "user_id": "28ce993d-1f3b-438b-8aa6-b7a471ee5b08",
+      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiMjhjZTk5M2QtMWYzYi00MzhiLThhYTYtYjdhNDcxZWU1YjA4IiwiZW1haWwiOiJrNi11c2VyLW13eG9lOWd2dXNqNTZAdGVzdC5jb20iLCJ1c2VyX3JvbGVzIjpbInVzZXIiXSwiZXhwIjoxNzk1NzA4NjA1LCJpYXQiOjE3OTU3MDUwMDV9.3KIRHGgKptflaVnySO1lVrKRJaVCHpb3OvVHWvyHwX8",
+      "refresh_token": "5bf07064b1af799956caddbd61afcc8d71d919a892b9ec8905cbea2570ffee3f"
     },
     {
-      "email": "k6-user-mwvxgxh7yioxf@test.com",
+      "email": "k6-user-mwxoe9gwh76n4@test.com",
       "password": "TestUser@123",
-      "user_id": "3125070b-23ee-451b-a6f2-e4184c31e4de",
-      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiMzEyNTA3MGItMjNlZS00NTFiLWE2ZjItZTQxODRjMzFlNGRlIiwiZW1haWwiOiJrNi11c2VyLW13dnhneGg3eWlveGZAdGVzdC5jb20iLCJ1c2VyX3JvbGVzIjpbInVzZXIiXSwiZXhwIjoxNzk1NjAyOTEzLCJpYXQiOjE3OTU1OTkzMTN9.RlYcdpptVs9NtpBlwWYR6NVFYnPkymgigpyQRQj4wBo",
-      "refresh_token": "79dc227883a39196c1e4a1e5f49ae67e25e54ba501ed8d2f8f9b4fd51d873443"
+      "user_id": "0362e046-927c-45b9-8591-69a0265e03d5",
+      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiMDM2MmUwNDYtOTI3Yy00NWI5LTg1OTEtNjlhMDI2NWUwM2Q1IiwiZW1haWwiOiJrNi11c2VyLW13eG9lOWd3aDc2bjRAdGVzdC5jb20iLCJ1c2VyX3JvbGVzIjpbInVzZXIiXSwiZXhwIjoxNzk1NzA4NjA1LCJpYXQiOjE3OTU3MDUwMDV9.-nQQkn0JbpA6WW2sj3cj_PickTtAHWu3gqgFjK5C3ts",
+      "refresh_token": "48e1663c6b6aeb11b9014caa4cbc10792cfe2bbc035864e733764c2a4ca97151"
     }
   ],
-  "created_at": "2026-11-25T09:35:12.778Z",
+  "created_at": "2026-11-26T14:56:43.170Z",
   "config": {
-    "num_events": 1,
+    "num_events": 4,
     "num_users": 10,
-    "inventory_qty": 10000
+    "inventory_qty": 100
   }
 }

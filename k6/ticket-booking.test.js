@@ -56,7 +56,8 @@ const orderSuccessRate = new Rate("order_success_rate");
 
 // ─── Load Test Data ───────────────────────────────────────────────────────────
 // TEST_DATA_FILE phải trỏ tới file JSON sinh bởi init-data.js
-const TEST_DATA_FILE = __ENV.TEST_DATA_FILE || "k6/setup/test-data.json";
+const TEST_DATA_FILE = __ENV.TEST_DATA_FILE || "setup/test-data.json";
+const REPORT_DIR = __ENV.REPORT_DIR || "k6/results";
 
 const testData = new SharedArray("testData", function () {
   return [JSON.parse(open(TEST_DATA_FILE))];
@@ -504,7 +505,7 @@ export function handleSummary(data) {
 
   return {
     stdout: summary + "\n" + textSummary(data, { indent: "  ", enableColors: true }),
-    [`results/summary-${ts}.json`]: JSON.stringify(data, null, 2),
-    [`results/report-${ts}.html`]:  htmlReport(data, { title: `Ticket Booking Load Test – ${ts}` }),
+    [`${REPORT_DIR}/summary-${ts}.json`]: JSON.stringify(data, null, 2),
+    [`${REPORT_DIR}/report-${ts}.html`]:  htmlReport(data, { title: `Ticket Booking Load Test – ${ts}` }),
   };
 }

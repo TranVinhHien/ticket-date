@@ -2,12 +2,19 @@ package consumers
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 
 	commonKafka "github.com/TranVinhHien/ticket-date/be/common/kafka"
 	"github.com/TranVinhHien/ticket-date/be/common/kafka/events"
 	"github.com/TranVinhHien/ticket-date/be/inventory-service/internal/services"
+	"github.com/google/uuid"
+)
+
+const (
+	outOfStockMessage  = "Sản phẩm đã hết hàng"
+	serverErrorMessage = "Lỗi server"
 )
 
 // RegisterOrderEventHandlers registers all order-related Kafka event handlers on the shared consumer.
@@ -30,6 +37,24 @@ func NewOrderCreatedHandler(invService services.InventoryService) commonKafka.Ha
 			env.EventID, payload.ID, len(payload.Items))
 
 		if err := invService.HandleOrderCreated(ctx, env.EventID, payload); err != nil {
+			log.Printf("[OrderCreatedConsumer] Failed to handle OrderCreated event_id=%s order_id=%s: %v",
+				env.EventID, payload.ID, err)
+
+			if errors.Is(err, services.ErrInsufficientInventory) {
+				if payload.ID != uuid.Nil {
+					if recErr := invService.RecordOrderReservationFailed(ctx, payload.ID, outOfStockMessage); recErr != nil {
+						return fmt.Errorf("record out-of-stock failure for order_id=%s: %w", payload.ID, recErr)
+					}
+				}
+				return nil
+			}
+
+			if commonKafka.IsFinalRetryAttempt(ctx) && payload.ID != uuid.Nil {
+				if recErr := invService.RecordOrderReservationFailed(ctx, payload.ID, serverErrorMessage); recErr != nil {
+					log.Printf("[OrderCreatedConsumer] Failed to record server error outbox for order_id=%s: %v", payload.ID, recErr)
+				}
+			}
+
 			return fmt.Errorf("handle OrderCreated order_id=%s: %w", payload.ID, err)
 		}
 

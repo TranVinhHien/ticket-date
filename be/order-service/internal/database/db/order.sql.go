@@ -29,7 +29,7 @@ INSERT INTO orders (
 ) VALUES (
     $1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), $9, NOW()
 )
-RETURNING id, user_id, order_code, total_amount, currency, status, expires_at, paid_at, created_by, created_at, updated_by, updated_at, deleted_by, deleted_at
+RETURNING id, user_id, order_code, total_amount, currency, status, expires_at, paid_at, created_by, created_at, updated_by, updated_at, deleted_by, deleted_at, message
 `
 
 type CreateOrderParams struct {
@@ -72,6 +72,7 @@ func (q *Queries) CreateOrder(ctx context.Context, arg CreateOrderParams) (Order
 		&i.UpdatedAt,
 		&i.DeletedBy,
 		&i.DeletedAt,
+		&i.Message,
 	)
 	return i, err
 }
@@ -181,7 +182,7 @@ func (q *Queries) CreateOutboxEvent(ctx context.Context, arg CreateOutboxEventPa
 }
 
 const getOrderByID = `-- name: GetOrderByID :one
-SELECT id, user_id, order_code, total_amount, currency, status, expires_at, paid_at, created_by, created_at, updated_by, updated_at, deleted_by, deleted_at FROM orders
+SELECT id, user_id, order_code, total_amount, currency, status, expires_at, paid_at, created_by, created_at, updated_by, updated_at, deleted_by, deleted_at, message FROM orders
 WHERE id = $1 AND deleted_at IS NULL
 `
 
@@ -203,12 +204,13 @@ func (q *Queries) GetOrderByID(ctx context.Context, id uuid.UUID) (Order, error)
 		&i.UpdatedAt,
 		&i.DeletedBy,
 		&i.DeletedAt,
+		&i.Message,
 	)
 	return i, err
 }
 
 const getOrderByCode = `-- name: GetOrderByCode :one
-SELECT id, user_id, order_code, total_amount, currency, status, expires_at, paid_at, created_by, created_at, updated_by, updated_at, deleted_by, deleted_at FROM orders
+SELECT id, user_id, order_code, total_amount, currency, status, expires_at, paid_at, created_by, created_at, updated_by, updated_at, deleted_by, deleted_at, message FROM orders
 WHERE order_code = $1 AND deleted_at IS NULL
 `
 
@@ -230,6 +232,7 @@ func (q *Queries) GetOrderByCode(ctx context.Context, orderCode string) (Order, 
 		&i.UpdatedAt,
 		&i.DeletedBy,
 		&i.DeletedAt,
+		&i.Message,
 	)
 	return i, err
 }
@@ -287,7 +290,7 @@ func (q *Queries) CountOrdersByUserID(ctx context.Context, userID uuid.UUID) (in
 }
 
 const listOrdersByUserID = `-- name: ListOrdersByUserID :many
-SELECT id, user_id, order_code, total_amount, currency, status, expires_at, paid_at, created_by, created_at, updated_by, updated_at, deleted_by, deleted_at FROM orders
+SELECT id, user_id, order_code, total_amount, currency, status, expires_at, paid_at, created_by, created_at, updated_by, updated_at, deleted_by, deleted_at, message FROM orders
 WHERE user_id = $1 AND deleted_at IS NULL
 ORDER BY created_at DESC
 LIMIT $2 OFFSET $3
@@ -323,6 +326,7 @@ func (q *Queries) ListOrdersByUserID(ctx context.Context, arg ListOrdersByUserID
 			&i.UpdatedAt,
 			&i.DeletedBy,
 			&i.DeletedAt,
+			&i.Message,
 		); err != nil {
 			return nil, err
 		}
@@ -405,7 +409,7 @@ func (q *Queries) DeleteOrderIdempotencyKey(ctx context.Context, arg DeleteOrder
 }
 
 const listOrdersByStatus = `-- name: ListOrdersByStatus :many
-SELECT id, user_id, order_code, total_amount, currency, status, expires_at, paid_at, created_by, created_at, updated_by, updated_at, deleted_by, deleted_at FROM orders
+SELECT id, user_id, order_code, total_amount, currency, status, expires_at, paid_at, created_by, created_at, updated_by, updated_at, deleted_by, deleted_at, message FROM orders
 WHERE status = $1 AND deleted_at IS NULL
 ORDER BY created_at ASC
 LIMIT $2 OFFSET $3
@@ -441,6 +445,7 @@ func (q *Queries) ListOrdersByStatus(ctx context.Context, arg ListOrdersByStatus
 			&i.UpdatedAt,
 			&i.DeletedBy,
 			&i.DeletedAt,
+			&i.Message,
 		); err != nil {
 			return nil, err
 		}
@@ -616,4 +621,78 @@ type RecoverStaleSendingOutboxEventsParams struct {
 func (q *Queries) RecoverStaleSendingOutboxEvents(ctx context.Context, arg RecoverStaleSendingOutboxEventsParams) (int64, error) {
 	tag, err := q.db.Exec(ctx, recoverStaleSendingOutboxEvents, arg.RetryCount, arg.Seconds)
 	return tag.RowsAffected(), err
+}
+
+const markOrderReserved = `-- name: MarkOrderReserved :one
+UPDATE orders
+SET
+    status = 'RESERVED',
+    updated_at = NOW()
+WHERE id = $1
+  AND status = 'PENDING'
+  AND deleted_at IS NULL
+RETURNING id, user_id, order_code, total_amount, currency, status, expires_at, paid_at, created_by, created_at, updated_by, updated_at, deleted_by, deleted_at, message
+`
+
+func (q *Queries) MarkOrderReserved(ctx context.Context, id uuid.UUID) (Order, error) {
+	row := q.db.QueryRow(ctx, markOrderReserved, id)
+	var i Order
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.OrderCode,
+		&i.TotalAmount,
+		&i.Currency,
+		&i.Status,
+		&i.ExpiresAt,
+		&i.PaidAt,
+		&i.CreatedBy,
+		&i.CreatedAt,
+		&i.UpdatedBy,
+		&i.UpdatedAt,
+		&i.DeletedBy,
+		&i.DeletedAt,
+		&i.Message,
+	)
+	return i, err
+}
+
+const markOrderFailed = `-- name: MarkOrderFailed :one
+UPDATE orders
+SET
+    status = 'FAILED',
+    message = $2,
+    updated_at = NOW()
+WHERE id = $1
+  AND status = 'PENDING'
+  AND deleted_at IS NULL
+RETURNING id, user_id, order_code, total_amount, currency, status, expires_at, paid_at, created_by, created_at, updated_by, updated_at, deleted_by, deleted_at, message
+`
+
+type MarkOrderFailedParams struct {
+	ID      uuid.UUID `json:"id"`
+	Message *string   `json:"message"`
+}
+
+func (q *Queries) MarkOrderFailed(ctx context.Context, arg MarkOrderFailedParams) (Order, error) {
+	row := q.db.QueryRow(ctx, markOrderFailed, arg.ID, arg.Message)
+	var i Order
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.OrderCode,
+		&i.TotalAmount,
+		&i.Currency,
+		&i.Status,
+		&i.ExpiresAt,
+		&i.PaidAt,
+		&i.CreatedBy,
+		&i.CreatedAt,
+		&i.UpdatedBy,
+		&i.UpdatedAt,
+		&i.DeletedBy,
+		&i.DeletedAt,
+		&i.Message,
+	)
+	return i, err
 }

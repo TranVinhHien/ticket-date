@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
@@ -19,6 +20,10 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
+var ErrInsufficientInventory = errors.New("insufficient inventory")
+
+const stockCacheTTL = 5 * time.Minute
+
 type InventoryService interface {
 	CreateInventoryBatch(ctx context.Context, userID *uuid.UUID, req dto.CreateInventoryBatchRequest) ([]dto.InventoryResponse, error)
 	UpdateInventoryStockBatch(ctx context.Context, userID *uuid.UUID, req dto.UpdateInventoryBatchRequest) ([]dto.StockResponse, error)
@@ -26,6 +31,7 @@ type InventoryService interface {
 	DeductStock(ctx context.Context, req dto.DeductStockRequest) error
 	RestoreStock(ctx context.Context, req dto.RestoreStockRequest) error
 	HandleOrderCreated(ctx context.Context, eventID string, payload events.OrderCreatedPayload) error
+	RecordOrderReservationFailed(ctx context.Context, orderID uuid.UUID, message string) error
 }
 
 type inventoryService struct {
@@ -282,7 +288,7 @@ func (s *inventoryService) GetCurrentStock(ctx context.Context, ticketTypeID uui
 		s.cache,
 		cacheKey,
 		lockKey,
-		5*time.Minute,
+		stockCacheTTL,
 		func(ctx context.Context) (int64, error) {
 			inv, err := s.repo.Queries().GetInventoryByTicketTypeID(ctx, ticketTypeID)
 			if err != nil {
@@ -458,8 +464,8 @@ func (s *inventoryService) HandleOrderCreated(ctx context.Context, eventID strin
 			return fmt.Errorf("batch hold stock for order_id=%s: %w", payload.ID, err)
 		}
 		if len(heldInventories) != len(sortedIDs) {
-			return fmt.Errorf("insufficient DB stock or missing inventory for order_id=%s (held=%d expected=%d)",
-				payload.ID, len(heldInventories), len(sortedIDs))
+			return fmt.Errorf("%w: order_id=%s (held=%d expected=%d)",
+				ErrInsufficientInventory, payload.ID, len(heldInventories), len(sortedIDs))
 		}
 
 		itemIDs := make([]uuid.UUID, len(heldInventories))
@@ -480,8 +486,53 @@ func (s *inventoryService) HandleOrderCreated(ctx context.Context, eventID strin
 			return fmt.Errorf("batch create HOLD transaction items for order_id=%s: %w", payload.ID, err)
 		}
 
+		reservedPayload, err := json.Marshal(events.InventoryReservedPayload{
+			OrderID: payload.ID,
+		})
+		if err != nil {
+			return fmt.Errorf("marshal %s payload for order_id=%s: %w", events.EventInventoryReserved, payload.ID, err)
+		}
+
+		if _, err := q.CreateOutboxEvent(ctx, db.CreateOutboxEventParams{
+			AggregateID: payload.ID.String(),
+			EventType:   events.EventInventoryReserved,
+			Payload:     string(reservedPayload),
+			Status:      0,
+		}); err != nil && !errors.Is(err, pgx.ErrNoRows) {
+			return fmt.Errorf("create outbox event %s for order_id=%s: %w", events.EventInventoryReserved, payload.ID, err)
+		}
+
 		return nil
 	})
+}
+
+// RecordOrderReservationFailed persists an inventory.reservation_fail event into outbox_event.
+func (s *inventoryService) RecordOrderReservationFailed(ctx context.Context, orderID uuid.UUID, message string) error {
+	if orderID == uuid.Nil {
+		return fmt.Errorf("invalid order_id for %s", events.EventInventoryReservationFailed)
+	}
+	if s.repo == nil || s.repo.Queries() == nil {
+		return fmt.Errorf("inventory repository is not initialized")
+	}
+
+	payloadBytes, err := json.Marshal(events.InventoryReservationFailedPayload{
+		OrderID: orderID,
+		Message: message,
+	})
+	if err != nil {
+		return fmt.Errorf("marshal %s payload for order_id=%s: %w", events.EventInventoryReservationFailed, orderID, err)
+	}
+
+	if _, err := s.repo.Queries().CreateOutboxEvent(ctx, db.CreateOutboxEventParams{
+		AggregateID: orderID.String(),
+		EventType:   events.EventInventoryReservationFailed,
+		Payload:     string(payloadBytes),
+		Status:      0,
+	}); err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		return fmt.Errorf("create outbox event %s for order_id=%s: %w", events.EventInventoryReservationFailed, orderID, err)
+	}
+
+	return nil
 }
 
 func prepareStockItems(items []dto.DeductStockItemDTO) ([]cache.DeductStockItem, error) {
@@ -600,7 +651,7 @@ func (s *inventoryService) initializeMissingStock(ctx context.Context, missingKe
 		}
 		cacheKey := stockAvailableCacheKey(inv.TicketTypeID)
 		// SetIntNX ensures we never overwrite newer stock updated by another concurrent request
-		_, _ = s.cache.SetIntNX(ctx, cacheKey, available, 0)
+		_, _ = s.cache.SetIntNX(ctx, cacheKey, available, stockCacheTTL)
 		log.Printf("[InventoryService.initializeMissingStock] Synchronized stock to Redis: key=%s, available=%d", cacheKey, available)
 	}
 

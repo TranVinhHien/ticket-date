@@ -14,10 +14,12 @@ import (
 	"github.com/TranVinhHien/ticket-date/be/common/grpc/interceptor"
 	pbInventory "github.com/TranVinhHien/ticket-date/be/common/grpc/pb/inventory"
 	commonKafka "github.com/TranVinhHien/ticket-date/be/common/kafka"
+	"github.com/TranVinhHien/ticket-date/be/common/kafka/events"
 	_ "github.com/TranVinhHien/ticket-date/be/inventory-service/docs"
 	"github.com/TranVinhHien/ticket-date/be/inventory-service/internal/cache"
 	"github.com/TranVinhHien/ticket-date/be/inventory-service/internal/config"
 	"github.com/TranVinhHien/ticket-date/be/inventory-service/internal/consumers"
+	"github.com/TranVinhHien/ticket-date/be/inventory-service/internal/cron"
 	"github.com/TranVinhHien/ticket-date/be/inventory-service/internal/database"
 	"github.com/TranVinhHien/ticket-date/be/inventory-service/internal/database/migrations"
 	"github.com/TranVinhHien/ticket-date/be/inventory-service/internal/handlers"
@@ -83,14 +85,14 @@ func main() {
 	// Initialize services
 	inventoryService := services.NewInventoryService(inventoryRepo, cacheEngine)
 
-	// Initialize and start Kafka consumer if brokers and topics are configured
-	if len(config.App.Kafka.Brokers) > 0 && len(config.App.Kafka.Topics) > 0 && config.App.Kafka.GroupID != "" {
+	// Initialize and start Kafka consumer if brokers and group_id are configured
+	if len(config.App.Kafka.Brokers) > 0 && config.App.Kafka.GroupID != "" {
 		zlog := zerolog.New(os.Stdout).With().Timestamp().Str("service", config.App.App.Name).Logger()
 		kafkaConsumer, err := commonKafka.NewConsumer(commonKafka.ConsumerConfig{
 			Brokers:      config.App.Kafka.Brokers,
 			ClientID:     config.App.Kafka.ClientID,
 			GroupID:      config.App.Kafka.GroupID,
-			Topics:       config.App.Kafka.Topics,
+			Topics:       []string{events.TopicOrderEvents},
 			MaxRetries:   config.App.Kafka.MaxRetries,
 			RetryBackoff: config.App.Kafka.RetryBackoff,
 			DLQEnabled:   config.App.Kafka.DLQEnabled,
@@ -112,6 +114,46 @@ func main() {
 				}()
 			}
 		}
+	}
+
+	// Initialize Kafka producer if brokers are configured
+	var kafkaProducer commonKafka.Producer
+	if len(config.App.Kafka.Brokers) > 0 {
+		zlog := zerolog.New(os.Stdout).With().Timestamp().Str("service", config.App.App.Name).Logger()
+		kafkaProducer, err = commonKafka.NewProducer(commonKafka.ProducerConfig{
+			Brokers:            config.App.Kafka.Brokers,
+			ClientID:           config.App.Kafka.ClientID,
+			Compression:        config.App.Kafka.Compression,
+			BatchMaxBytes:      config.App.Kafka.BatchMaxBytes,
+			LingerMs:           config.App.Kafka.LingerMs,
+			MaxBufferedRecords: config.App.Kafka.MaxBufferedRecords,
+			AllowAutoTopic:     config.App.Kafka.AllowAutoTopic,
+		}, zlog)
+		if err != nil {
+			log.Printf("Warning: failed to initialize Kafka producer: %v", err)
+		} else {
+			defer func() {
+				closeCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+				defer cancel()
+				_ = kafkaProducer.Close(closeCtx)
+			}()
+		}
+	}
+
+	// Initialize and start cron jobs
+	if config.App.Cron.Enabled {
+		cronManager, err := cron.NewConfiguredManager(
+			config.App.Cron,
+			inventoryRepo,
+			kafkaProducer,
+		)
+		if err != nil {
+			log.Fatalf("Failed to initialize cron manager: %v", err)
+		}
+		cronCtx, cancelCron := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+		defer cancelCron()
+		cronManager.Start(cronCtx)
+		defer cronManager.Stop()
 	}
 
 	// Initialize handlers

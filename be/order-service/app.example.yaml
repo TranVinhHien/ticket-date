@@ -52,12 +52,16 @@ aws:
 kafka:
   brokers: ["localhost:9092"]
   client_id: "order-service"
+  group_id: "order-service-group"
+  max_retries: 3
+  retry_backoff: "500ms"
+  dlq_enabled: true
+  dlq_suffix: ".dlq"
   compression: "lz4"
   batch_max_bytes: 1048576
   linger_ms: 10
   max_buffered_records: 100000
   allow_auto_topic: true
-  topic_order_events: "order.events"
 
 cron:
   enabled: true
