@@ -20,6 +20,7 @@ type Config struct {
 	Redis            RedisConfig            `mapstructure:"redis"`
 	ExternalServices ExternalServicesConfig `mapstructure:"external_services"`
 	AWS              AWSConfig              `mapstructure:"aws"`
+	Cron             CronConfig             `mapstructure:"cron"`
 }
 
 type AppMetadataConfig struct {
@@ -93,6 +94,17 @@ type AWSConfig struct {
 	AccessKeyID     string `mapstructure:"access_key_id"`
 	SecretAccessKey string `mapstructure:"secret_access_key"`
 	BucketName      string `mapstructure:"bucket_name"`
+}
+
+type CronJobConfig struct {
+	Enabled  bool          `mapstructure:"enabled"`
+	Interval time.Duration `mapstructure:"interval"`
+	Batch    int32         `mapstructure:"batch"`
+}
+
+type CronConfig struct {
+	Enabled       bool          `mapstructure:"enabled"`
+	PendingOrders CronJobConfig `mapstructure:"pending_orders"`
 }
 
 var App Config
@@ -175,6 +187,10 @@ func LoadConfig(path string) (*Config, error) {
 	v.SetDefault("redis.dial_timeout", 5*time.Second)
 	v.SetDefault("redis.read_timeout", 3*time.Second)
 	v.SetDefault("redis.write_timeout", 3*time.Second)
+	v.SetDefault("cron.enabled", true)
+	v.SetDefault("cron.pending_orders.enabled", true)
+	v.SetDefault("cron.pending_orders.interval", 1*time.Minute)
+	v.SetDefault("cron.pending_orders.batch", 100)
 
 	// Bind environment variables for Docker Compose and K8s Secrets
 	_ = v.BindEnv("http_server.port", "PORT", "SERVER_PORT", "HTTP_SERVER_PORT")
@@ -201,6 +217,10 @@ func LoadConfig(path string) (*Config, error) {
 	_ = v.BindEnv("aws.access_key_id", "AWS_ACCESS_KEY_ID")
 	_ = v.BindEnv("aws.secret_access_key", "AWS_SECRET_ACCESS_KEY")
 	_ = v.BindEnv("aws.bucket_name", "AWS_BUCKET_NAME", "S3_BUCKET_NAME")
+	_ = v.BindEnv("cron.enabled", "CRON_ENABLED")
+	_ = v.BindEnv("cron.pending_orders.enabled", "CRON_PENDING_ORDERS_ENABLED")
+	_ = v.BindEnv("cron.pending_orders.interval", "CRON_PENDING_ORDERS_INTERVAL")
+	_ = v.BindEnv("cron.pending_orders.batch", "CRON_PENDING_ORDERS_BATCH")
 
 	if err := v.ReadInConfig(); err != nil {
 		if !os.IsNotExist(err) && !strings.Contains(err.Error(), "no such file") {

@@ -96,3 +96,9 @@ WHERE user_id = $1 AND key = $2 AND NOT EXISTS (SELECT 1 FROM ins);
 -- name: DeleteOrderIdempotencyKey :exec
 DELETE FROM order_idempotency_keys
 WHERE user_id = $1 AND key = $2 AND order_id = $3;
+
+-- name: ListOrdersByStatus :many
+SELECT * FROM orders
+WHERE status = $1 AND deleted_at IS NULL
+ORDER BY created_at ASC
+LIMIT $2 OFFSET $3;

@@ -1,9 +1,13 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"log"
+	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	grpcClient "github.com/TranVinhHien/ticket-date/be/common/grpc/client"
@@ -12,6 +16,7 @@ import (
 	_ "github.com/TranVinhHien/ticket-date/be/order-service/docs"
 	"github.com/TranVinhHien/ticket-date/be/order-service/internal/cache"
 	"github.com/TranVinhHien/ticket-date/be/order-service/internal/config"
+	"github.com/TranVinhHien/ticket-date/be/order-service/internal/cron"
 	"github.com/TranVinhHien/ticket-date/be/order-service/internal/database"
 	"github.com/TranVinhHien/ticket-date/be/order-service/internal/database/migrations"
 	"github.com/TranVinhHien/ticket-date/be/order-service/internal/handlers"
@@ -107,6 +112,18 @@ func main() {
 
 	// Initialize services
 	orderService := services.NewOrderService(orderRepo, cacheEngine, inventoryClient, eventClient)
+
+	// Initialize and start cron jobs
+	if config.App.Cron.Enabled {
+		cronManager, err := cron.NewConfiguredManager(config.App.Cron, orderRepo)
+		if err != nil {
+			log.Fatalf("Failed to initialize cron manager: %v", err)
+		}
+		cronCtx, cancelCron := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+		defer cancelCron()
+		cronManager.Start(cronCtx)
+		defer cronManager.Stop()
+	}
 
 	// Initialize handlers
 	orderHandler := handlers.NewOrderHandler(orderService)

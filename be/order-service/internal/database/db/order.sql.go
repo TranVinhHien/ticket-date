@@ -403,3 +403,51 @@ func (q *Queries) DeleteOrderIdempotencyKey(ctx context.Context, arg DeleteOrder
 	_, err := q.db.Exec(ctx, deleteOrderIdempotencyKey, arg.UserID, arg.Key, arg.OrderID)
 	return err
 }
+
+const listOrdersByStatus = `-- name: ListOrdersByStatus :many
+SELECT id, user_id, order_code, total_amount, currency, status, expires_at, paid_at, created_by, created_at, updated_by, updated_at, deleted_by, deleted_at FROM orders
+WHERE status = $1 AND deleted_at IS NULL
+ORDER BY created_at ASC
+LIMIT $2 OFFSET $3
+`
+
+type ListOrdersByStatusParams struct {
+	Status string `json:"status"`
+	Limit  int32  `json:"limit"`
+	Offset int32  `json:"offset"`
+}
+
+func (q *Queries) ListOrdersByStatus(ctx context.Context, arg ListOrdersByStatusParams) ([]Order, error) {
+	rows, err := q.db.Query(ctx, listOrdersByStatus, arg.Status, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Order
+	for rows.Next() {
+		var i Order
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.OrderCode,
+			&i.TotalAmount,
+			&i.Currency,
+			&i.Status,
+			&i.ExpiresAt,
+			&i.PaidAt,
+			&i.CreatedBy,
+			&i.CreatedAt,
+			&i.UpdatedBy,
+			&i.UpdatedAt,
+			&i.DeletedBy,
+			&i.DeletedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
