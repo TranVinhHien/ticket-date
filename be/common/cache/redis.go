@@ -43,6 +43,32 @@ func (c *redisCache) Get(ctx context.Context, key string, dest any) error {
 	return nil
 }
 
+func (c *redisCache) MGet(ctx context.Context, keys []string) (map[string][]byte, error) {
+	result := make(map[string][]byte, len(keys))
+	if c.client == nil || len(keys) == 0 {
+		return result, nil
+	}
+
+	vals, err := c.client.MGet(ctx, keys...).Result()
+	if err != nil {
+		return nil, fmt.Errorf("redis mget: %w", err)
+	}
+
+	for i, v := range vals {
+		if v == nil {
+			continue
+		}
+		switch raw := v.(type) {
+		case string:
+			result[keys[i]] = []byte(raw)
+		case []byte:
+			result[keys[i]] = raw
+		}
+	}
+
+	return result, nil
+}
+
 func (c *redisCache) Set(ctx context.Context, key string, value any, ttl time.Duration) error {
 	if c.client == nil {
 		return nil

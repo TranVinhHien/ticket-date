@@ -6,6 +6,7 @@ import (
 	"log"
 	"net"
 
+	"github.com/TranVinhHien/ticket-date/be/common/cache"
 	"github.com/TranVinhHien/ticket-date/be/common/grpc/interceptor"
 	pbEvent "github.com/TranVinhHien/ticket-date/be/common/grpc/pb/event"
 	"github.com/TranVinhHien/ticket-date/be/event-service/internal/config"
@@ -35,6 +36,10 @@ func main() {
 	database.Connect()
 	defer database.Close()
 
+	// Connect to Redis
+	database.ConnectRedis()
+	defer database.CloseRedis()
+
 	db := database.GetDB()
 	err = database.Migrate(db, migrations.FS, ".")
 	if err != nil {
@@ -47,10 +52,26 @@ func main() {
 	venueRepo := repository.NewVenueRepository(db)
 	eventRepo := repository.NewEventRepository(db)
 
+	cacheTTL := config.App.Redis.CacheTTL
+	if cacheTTL <= 0 {
+		cacheTTL = 5 * time.Minute
+	}
+	negativeCacheTTL := config.App.Redis.NegativeCacheTTL
+	if negativeCacheTTL <= 0 {
+		negativeCacheTTL = 1 * time.Minute
+	}
+
+	var cacheEngine cache.Cache
+	if rdb := database.GetRedisClient(); rdb != nil {
+		cacheEngine = cache.NewRedisCache(rdb, cacheTTL)
+	} else {
+		cacheEngine = cache.NewMemoryCache(cacheTTL, 1*time.Minute)
+	}
+
 	// Initialize services
 	organizerService := services.NewOrganizerService(organizerRepo)
 	venueService := services.NewVenueService(venueRepo, organizerRepo)
-	eventService := services.NewEventService(eventRepo, organizerRepo, venueRepo)
+	eventService := services.NewEventService(eventRepo, organizerRepo, venueRepo, cacheEngine, cacheTTL, negativeCacheTTL)
 
 	// Initialize handlers
 	organizerHandler := handlers.NewOrganizerHandler(organizerService)

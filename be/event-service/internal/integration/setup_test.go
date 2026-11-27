@@ -93,7 +93,7 @@ func TestMain(m *testing.M) {
 
 	organizerService := services.NewOrganizerService(organizerRepo)
 	venueService := services.NewVenueService(venueRepo, organizerRepo)
-	eventService := services.NewEventService(eventRepo, organizerRepo, venueRepo)
+	eventService := services.NewEventService(eventRepo, organizerRepo, venueRepo, nil, 0, 0)
 
 	organizerHandler := handlers.NewOrganizerHandler(organizerService)
 	venueHandler := handlers.NewVenueHandler(venueService)

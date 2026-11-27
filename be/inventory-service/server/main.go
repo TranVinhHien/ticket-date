@@ -11,12 +11,12 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/TranVinhHien/ticket-date/be/common/cache"
 	"github.com/TranVinhHien/ticket-date/be/common/grpc/interceptor"
 	pbInventory "github.com/TranVinhHien/ticket-date/be/common/grpc/pb/inventory"
 	commonKafka "github.com/TranVinhHien/ticket-date/be/common/kafka"
 	"github.com/TranVinhHien/ticket-date/be/common/kafka/events"
 	_ "github.com/TranVinhHien/ticket-date/be/inventory-service/docs"
-	"github.com/TranVinhHien/ticket-date/be/inventory-service/internal/cache"
 	"github.com/TranVinhHien/ticket-date/be/inventory-service/internal/config"
 	"github.com/TranVinhHien/ticket-date/be/inventory-service/internal/consumers"
 	"github.com/TranVinhHien/ticket-date/be/inventory-service/internal/cron"

@@ -95,6 +95,24 @@ func (c *memoryCache) Get(ctx context.Context, key string, dest any) error {
 	return nil
 }
 
+func (c *memoryCache) MGet(ctx context.Context, keys []string) (map[string][]byte, error) {
+	result := make(map[string][]byte, len(keys))
+	if len(keys) == 0 {
+		return result, nil
+	}
+
+	c.mu.RLock()
+	for _, k := range keys {
+		item, exists := c.items[k]
+		if exists && !item.isExpired() {
+			result[k] = item.value
+		}
+	}
+	c.mu.RUnlock()
+
+	return result, nil
+}
+
 func (c *memoryCache) Set(ctx context.Context, key string, value any, ttl time.Duration) error {
 	data, err := json.Marshal(value)
 	if err != nil {

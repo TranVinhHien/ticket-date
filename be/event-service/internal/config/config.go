@@ -14,6 +14,7 @@ type Config struct {
 	HttpServer  HttpServerConfig  `mapstructure:"http_server"`
 	Logger      LoggerConfig      `mapstructure:"logger"`
 	CockroachDB CockroachConfig   `mapstructure:"cockroach_db"`
+	Redis       RedisConfig       `mapstructure:"redis"`
 	Token       TokenConfig       `mapstructure:"token"`
 }
 
@@ -52,6 +53,20 @@ type CockroachConfig struct {
 
 type TokenConfig struct {
 	Secret string `mapstructure:"secret"`
+}
+
+type RedisConfig struct {
+	Host             string        `mapstructure:"host"`
+	Port             int           `mapstructure:"port"`
+	Password         string        `mapstructure:"password"`
+	DB               int           `mapstructure:"db"`
+	PoolSize         int           `mapstructure:"pool_size"`
+	MinIdleConns     int           `mapstructure:"min_idle_conns"`
+	DialTimeout      time.Duration `mapstructure:"dial_timeout"`
+	ReadTimeout      time.Duration `mapstructure:"read_timeout"`
+	WriteTimeout     time.Duration `mapstructure:"write_timeout"`
+	CacheTTL         time.Duration `mapstructure:"cache_ttl"`
+	NegativeCacheTTL time.Duration `mapstructure:"negative_cache_ttl"`
 }
 
 var App Config
@@ -121,6 +136,13 @@ func LoadConfig(path string) (*Config, error) {
 	v.SetDefault("cockroach_db.max_open_conns", 25)
 	v.SetDefault("cockroach_db.max_idle_conns", 5)
 	v.SetDefault("cockroach_db.conn_max_lifetime", time.Hour)
+	v.SetDefault("redis.host", "localhost")
+	v.SetDefault("redis.port", 6379)
+	v.SetDefault("redis.db", 0)
+	v.SetDefault("redis.pool_size", 20)
+	v.SetDefault("redis.min_idle_conns", 5)
+	v.SetDefault("redis.cache_ttl", 5*time.Minute)
+	v.SetDefault("redis.negative_cache_ttl", 1*time.Minute)
 	v.SetDefault("token.secret", "change-me-to-a-long-random-secret")
 
 	// Bind environment variables
@@ -133,6 +155,10 @@ func LoadConfig(path string) (*Config, error) {
 	_ = v.BindEnv("cockroach_db.password", "DB_PASSWORD", "COCKROACH_DB_PASSWORD", "DATABASE_PASSWORD", "POSTGRES_PASSWORD")
 	_ = v.BindEnv("cockroach_db.db_name", "DB_NAME", "COCKROACH_DB_NAME", "DATABASE_NAME", "POSTGRES_DB")
 	_ = v.BindEnv("cockroach_db.ssl_mode", "DB_SSLMODE", "COCKROACH_DB_SSLMODE")
+	_ = v.BindEnv("redis.host", "REDIS_HOST")
+	_ = v.BindEnv("redis.port", "REDIS_PORT")
+	_ = v.BindEnv("redis.password", "REDIS_PASSWORD")
+	_ = v.BindEnv("redis.db", "REDIS_DB")
 	_ = v.BindEnv("token.secret", "JWT_SECRET", "TOKEN_SECRET")
 
 	if err := v.ReadInConfig(); err != nil {

@@ -5,9 +5,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/TranVinhHien/ticket-date/be/common/cache"
 	grpcErrors "github.com/TranVinhHien/ticket-date/be/common/grpc/errors"
 	"github.com/TranVinhHien/ticket-date/be/common/kafka/events"
-	"github.com/TranVinhHien/ticket-date/be/inventory-service/internal/cache"
 	"github.com/TranVinhHien/ticket-date/be/inventory-service/internal/database/db"
 	"github.com/TranVinhHien/ticket-date/be/inventory-service/internal/handlers/dto"
 	"github.com/TranVinhHien/ticket-date/be/inventory-service/internal/services"
@@ -64,11 +64,11 @@ type mockRows struct {
 	err  error
 }
 
-func (r *mockRows) Close() {}
-func (r *mockRows) Err() error { return r.err }
-func (r *mockRows) CommandTag() pgconn.CommandTag { return pgconn.NewCommandTag("") }
+func (r *mockRows) Close()                                       {}
+func (r *mockRows) Err() error                                   { return r.err }
+func (r *mockRows) CommandTag() pgconn.CommandTag                { return pgconn.NewCommandTag("") }
 func (r *mockRows) FieldDescriptions() []pgconn.FieldDescription { return nil }
-func (r *mockRows) TypeMap() *pgtype.Map { return pgtype.NewMap() }
+func (r *mockRows) TypeMap() *pgtype.Map                         { return pgtype.NewMap() }
 func (r *mockRows) Next() bool {
 	if r.idx < len(r.rows) {
 		r.idx++
@@ -105,8 +105,8 @@ func (r *mockRows) Scan(dest ...interface{}) error {
 	return nil
 }
 func (r *mockRows) Values() ([]interface{}, error) { return nil, nil }
-func (r *mockRows) RawValues() [][]byte { return nil }
-func (r *mockRows) Conn() *pgx.Conn { return nil }
+func (r *mockRows) RawValues() [][]byte            { return nil }
+func (r *mockRows) Conn() *pgx.Conn                { return nil }
 
 type testRepo struct {
 	dbtx *mockDBTX

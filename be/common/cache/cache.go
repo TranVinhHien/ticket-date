@@ -16,6 +16,10 @@ type Cache interface {
 	// Returns ErrCacheMiss if key does not exist or has expired.
 	Get(ctx context.Context, key string, dest any) error
 
+	// MGet retrieves raw JSON bytes for multiple keys in a single batch call.
+	// Missing or expired keys are omitted from the returned map.
+	MGet(ctx context.Context, keys []string) (map[string][]byte, error)
+
 	// Set sets the key-value pair with a time-to-live (TTL).
 	// If ttl <= 0, the key will not expire.
 	Set(ctx context.Context, key string, value any, ttl time.Duration) error
