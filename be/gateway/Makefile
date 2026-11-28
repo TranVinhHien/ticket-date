@@ -1,4 +1,4 @@
 run:
-	go run cmd/main.go
+	go run server/main.go
 run-all: run
 

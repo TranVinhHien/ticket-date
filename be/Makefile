@@ -1,13 +1,13 @@
 .PHONY: run-gateway run-user run-event run-inventory run-order run-all
 
 run-gateway:
-	cd gateway && go run cmd/main.go
+	cd gateway && go run server/main.go
 
 run-user:
-	cd user-service && go run cmd/server/main.go
+	cd user-service && go run server/main.go
 
 run-event:
-	cd event-service && go run cmd/server/main.go
+	cd event-service && go run server/main.go
 
 run-inventory:
 	cd inventory-service && go run server/main.go

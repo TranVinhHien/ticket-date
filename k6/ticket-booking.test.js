@@ -150,11 +150,14 @@ function authHeaders(token) {
 }
 
 /**
- * Parse response body, trả về { ok, code, data, raw }
+ * Parse response body, trả về { ok, httpStatus, code, data, raw }
  * ok = true nếu HTTP 2xx VÀ body.code == "200" (hoặc "201")
+ * Chỉ lỗi hạ tầng/HTTP thật sự (network error status=0, 5xx, hoặc 4xx không phải 409) mới tính vào apiErrors & errorRate.
+ * HTTP 409 (hết vé / order đang xử lý) hoặc HTTP 2xx nhưng body.code != 200/201 được tính vào businessErrors.
  */
 function parseResponse(res, label) {
   const isHttp2xx = res.status >= 200 && res.status < 300;
+  const isBusinessConflict = res.status === 409;
 
   let body;
   try {
@@ -168,11 +171,13 @@ function parseResponse(res, label) {
 
   const ok = isHttp2xx && isBodyOk;
 
-  if (!isHttp2xx) {
-    apiErrors.add(1);
-    errorRate.add(1);
-  } else if (!isBodyOk) {
+  if (isBusinessConflict || (isHttp2xx && !isBodyOk)) {
+    // Lỗi nghiệp vụ (vd: hết vé 409), không tính là lỗi hạ tầng
     businessErrors.add(1);
+    errorRate.add(0);
+  } else if (!isHttp2xx) {
+    // Lỗi hạ tầng / HTTP thật sự (timeout, connection refused, 5xx, ...)
+    apiErrors.add(1);
     errorRate.add(1);
   } else {
     errorRate.add(0);
@@ -332,12 +337,6 @@ export default function () {
     } else {
       orderFailed.add(1);
       orderSuccessRate.add(0);
-
-      // Phân loại lỗi nghiệp vụ vs lỗi HTTP
-      if (res.status >= 200 && res.status < 300) {
-        // HTTP OK nhưng body báo lỗi nghiệp vụ (vd: hết vé)
-        businessErrors.add(1);
-      }
     }
   });
 
@@ -396,10 +395,6 @@ export default function () {
     } else {
       orderFailed.add(1);
       orderSuccessRate.add(0);
-
-      if (res.status >= 200 && res.status < 300) {
-        businessErrors.add(1);
-      }
     }
   });
 
@@ -484,10 +479,10 @@ export function handleSummary(data) {
 ║    [6,10] Create Order: ${p(fmt(orderP95, " ms") + " avg:" + fmt(orderAvg, " ms"))}║
 ║    [8] Get Profile   : ${p(fmt(profileP95, " ms"))}║
 ╠════════════════════════════════════════════════════════════════╣
-║  Lỗi                                                           ║
+║  Lỗi (chỉ tính lỗi hạ tầng/HTTP vào Error Rate)                ║
 ║    Error Rate  : ${p(fmt(errRate * 100, " %"))}║
 ║    HTTP Errors : ${p(String(httpErrors))}║
-║    Biz Errors  : ${p(String(bizErrors) + " (HTTP 2xx nhưng business fail)")}║
+║    Biz Errors  : ${p(String(bizErrors) + " (409 hết vé / 2xx biz fail)")}║
 ║    Inv Fail    : ${p(String(invFail))}║
 ╠════════════════════════════════════════════════════════════════╣
 ║  Đặt Vé (Orders)                                              ║

@@ -80,37 +80,39 @@ func main() {
 	// Initialize repositories
 	orderRepo := repository.NewOrderRepository(pool)
 
-	// Initialize gRPC client for inventory service
+	// Initialize gRPC client pool for inventory service
 	var inventoryClient pbInventory.InventoryServiceClient
 	if config.App.GRPCClient.InventoryHost != "" && config.App.GRPCClient.InventoryPort != 0 {
 		inventoryAddr := fmt.Sprintf("%s:%d", config.App.GRPCClient.InventoryHost, config.App.GRPCClient.InventoryPort)
-		conn, err := grpcClient.NewClientConn(
+		pool, err := grpcClient.NewClientPool(
 			inventoryAddr,
+			4,
 			grpcClient.WithTimeout(5*time.Second),
 			grpcClient.WithInsecure(),
 		)
 		if err != nil {
 			log.Printf("Warning: failed to connect to inventory gRPC server at %s: %v", inventoryAddr, err)
 		} else {
-			defer conn.Close()
-			inventoryClient = pbInventory.NewInventoryServiceClient(conn)
+			defer pool.Close()
+			inventoryClient = pbInventory.NewInventoryServiceClient(pool)
 		}
 	}
 
-	// Initialize gRPC client for event service
+	// Initialize gRPC client pool for event service
 	var eventClient pbEvent.EventServiceClient
 	if config.App.GRPCClient.EventHost != "" && config.App.GRPCClient.EventPort != 0 {
 		eventAddr := fmt.Sprintf("%s:%d", config.App.GRPCClient.EventHost, config.App.GRPCClient.EventPort)
-		eventConn, err := grpcClient.NewClientConn(
+		eventPool, err := grpcClient.NewClientPool(
 			eventAddr,
+			4,
 			grpcClient.WithTimeout(5*time.Second),
 			grpcClient.WithInsecure(),
 		)
 		if err != nil {
 			log.Printf("Warning: failed to connect to event gRPC server at %s: %v", eventAddr, err)
 		} else {
-			defer eventConn.Close()
-			eventClient = pbEvent.NewEventServiceClient(eventConn)
+			defer eventPool.Close()
+			eventClient = pbEvent.NewEventServiceClient(eventPool)
 		}
 	}
 

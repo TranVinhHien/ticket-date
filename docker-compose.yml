@@ -1,0 +1,282 @@
+# ==============================================================================
+# Ticket-Date Microservices - Docker Compose
+# ==============================================================================
+# Usage:
+#   Local (with bundled Postgres, Redis, Kafka):
+#     docker compose --profile infra up -d --build
+#
+#   App services only (pointing to external / managed DB, Redis, Kafka):
+#     docker compose up -d --build
+#
+#   Production (pull pre-built images from registry, env injected by CI/CD):
+#     REGISTRY=ghcr.io/your-org IMAGE_TAG=v1.0.0 docker compose pull
+#     REGISTRY=ghcr.io/your-org IMAGE_TAG=v1.0.0 docker compose up -d --no-build
+# ==============================================================================
+
+x-common-env: &common-env
+  APP_ENV: ${APP_ENV:-production}
+  GIN_MODE: ${GIN_MODE:-release}
+  LOG_LEVEL: ${LOG_LEVEL:-info}
+  JWT_SECRET: ${JWT_SECRET:-change-me-to-a-long-random-secret}
+  ACCESS_TOKEN_EXPIRATION_TIME: ${ACCESS_TOKEN_EXPIRATION_TIME:-3600}
+  REFRESH_TOKEN_EXPIRATION_TIME: ${REFRESH_TOKEN_EXPIRATION_TIME:-86400}
+
+x-db-env: &db-env
+  DB_HOST: ${DB_HOST:-postgres}
+  DB_PORT: ${DB_PORT:-5432}
+  DB_USER: ${DB_USER:-postgres}
+  DB_PASSWORD: ${DB_PASSWORD:-postgres}
+  DB_SSLMODE: ${DB_SSLMODE:-disable}
+
+x-redis-env: &redis-env
+  REDIS_HOST: ${REDIS_HOST:-redis}
+  REDIS_PORT: ${REDIS_PORT:-6379}
+  REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+  REDIS_DB: ${REDIS_DB:-0}
+
+x-aws-env: &aws-env
+  AWS_REGION: ${AWS_REGION:-ap-northeast-2}
+  AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+  AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
+  AWS_BUCKET_NAME: ${AWS_BUCKET_NAME:-}
+
+x-service-defaults: &service-defaults
+  restart: unless-stopped
+  env_file:
+    - path: .env
+      required: false
+  networks:
+    - ticket-net
+
+services:
+  # ============================================================================
+  # Infrastructure (enabled via: --profile infra)
+  # ============================================================================
+  postgres:
+    <<: *service-defaults
+    profiles: ["infra"]
+    image: postgres:16-alpine
+    container_name: ticket-postgres
+    environment:
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-ticket}
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./deploy/postgres/init-dbs.sql:/docker-entrypoint-initdb.d/init-dbs.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  redis:
+    <<: *service-defaults
+    profiles: ["infra"]
+    image: redis:7-alpine
+    container_name: ticket-redis
+    command: >
+      sh -c 'if [ -n "$$REDIS_PASSWORD" ]; then
+        exec redis-server --appendonly yes --requirepass "$$REDIS_PASSWORD";
+      else
+        exec redis-server --appendonly yes;
+      fi'
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli ping | grep -q PONG"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  kafka:
+    <<: *service-defaults
+    profiles: ["infra"]
+    image: apache/kafka:3.9.0
+    container_name: ticket-kafka
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    ports:
+      - "9092:9092"
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list >/dev/null 2>&1"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 20s
+
+  # ============================================================================
+  # Application Microservices
+  # ============================================================================
+  gateway:
+    <<: *service-defaults
+    image: ${REGISTRY:-ticket-date}/gateway:${IMAGE_TAG:-latest}
+    build:
+      context: ./be
+      dockerfile: gateway/Dockerfile
+    container_name: ticket-gateway
+    ports:
+      - "${GATEWAY_PORT:-8000}:8000"
+    volumes:
+      - ./deploy/gateway/gateway.docker.yaml:/app/gateway.yaml:ro
+    environment:
+      <<: *common-env
+      PORT: 8000
+      CONFIG_FILE: /app/gateway.yaml
+      PERMISSIONS_FILE: /app/permissions.json
+      USER_SERVICE_URL: ${USER_SERVICE_URL:-http://user-service:8080}
+    depends_on:
+      user-service:
+        condition: service_healthy
+      event-service:
+        condition: service_healthy
+      inventory-service:
+        condition: service_healthy
+      order-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:8000/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  user-service:
+    <<: *service-defaults
+    image: ${REGISTRY:-ticket-date}/user-service:${IMAGE_TAG:-latest}
+    build:
+      context: ./be
+      dockerfile: user-service/Dockerfile
+    container_name: ticket-user-service
+    ports:
+      - "${USER_SERVICE_PORT:-8080}:8080"
+    environment:
+      <<: [*common-env, *db-env, *aws-env]
+      PORT: 8080
+      DB_NAME: ${USER_DB_NAME:-ticket}
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:8080/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  event-service:
+    <<: *service-defaults
+    image: ${REGISTRY:-ticket-date}/event-service:${IMAGE_TAG:-latest}
+    build:
+      context: ./be
+      dockerfile: event-service/Dockerfile
+    container_name: ticket-event-service
+    ports:
+      - "${EVENT_SERVICE_PORT:-8081}:8081"
+      - "${EVENT_GRPC_PORT:-50051}:50051"
+    environment:
+      <<: [*common-env, *db-env, *redis-env]
+      PORT: 8081
+      HTTP_SERVER_GRPC_PORT: 50051
+      DB_NAME: ${EVENT_DB_NAME:-ticket}
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:8081/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  inventory-service:
+    <<: *service-defaults
+    image: ${REGISTRY:-ticket-date}/inventory-service:${IMAGE_TAG:-latest}
+    build:
+      context: ./be
+      dockerfile: inventory-service/Dockerfile
+    container_name: ticket-inventory-service
+    ports:
+      - "${INVENTORY_SERVICE_PORT:-8082}:8082"
+      - "${INVENTORY_GRPC_PORT:-50052}:50052"
+    environment:
+      <<: [*common-env, *db-env, *redis-env, *aws-env]
+      PORT: 8082
+      HTTP_SERVER_GRPC_PORT: 50052
+      DB_NAME: ${INVENTORY_DB_NAME:-inventory}
+      KAFKA_BROKERS: ${KAFKA_BROKERS:-kafka:9092}
+      KAFKA_CLIENT_ID: inventory-service
+      KAFKA_GROUP_ID: inventory-service-group
+      CRON_ENABLED: ${CRON_ENABLED:-true}
+      CRON_OUTBOX_RELAY_ENABLED: ${CRON_OUTBOX_RELAY_ENABLED:-true}
+      CRON_OUTBOX_RELAY_INTERVAL: ${CRON_OUTBOX_RELAY_INTERVAL:-2s}
+      CRON_OUTBOX_RELAY_BATCH: ${CRON_OUTBOX_RELAY_BATCH:-100}
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:8082/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  order-service:
+    <<: *service-defaults
+    image: ${REGISTRY:-ticket-date}/order-service:${IMAGE_TAG:-latest}
+    build:
+      context: ./be
+      dockerfile: order-service/Dockerfile
+    container_name: ticket-order-service
+    ports:
+      - "${ORDER_SERVICE_PORT:-8083}:8083"
+      - "${ORDER_GRPC_PORT:-50053}:50053"
+    environment:
+      <<: [*common-env, *db-env, *redis-env, *aws-env]
+      PORT: 8083
+      HTTP_SERVER_GRPC_PORT: 50053
+      DB_NAME: ${ORDER_DB_NAME:-order}
+      KAFKA_BROKERS: ${KAFKA_BROKERS:-kafka:9092}
+      KAFKA_CLIENT_ID: order-service
+      KAFKA_GROUP_ID: order-service-group
+      EVENT_GRPC_HOST: ${EVENT_GRPC_HOST:-event-service}
+      EVENT_GRPC_PORT: ${EVENT_GRPC_PORT:-50051}
+      INVENTORY_GRPC_HOST: ${INVENTORY_GRPC_HOST:-inventory-service}
+      INVENTORY_GRPC_PORT: ${INVENTORY_GRPC_PORT:-50052}
+      CRON_ENABLED: ${CRON_ENABLED:-true}
+      CRON_OUTBOX_RELAY_ENABLED: ${CRON_OUTBOX_RELAY_ENABLED:-true}
+      CRON_OUTBOX_RELAY_INTERVAL: ${CRON_OUTBOX_RELAY_INTERVAL:-2s}
+      CRON_OUTBOX_RELAY_BATCH: ${CRON_OUTBOX_RELAY_BATCH:-100}
+      CRON_PENDING_ORDERS_ENABLED: ${CRON_PENDING_ORDERS_ENABLED:-true}
+      CRON_PENDING_ORDERS_INTERVAL: ${CRON_PENDING_ORDERS_INTERVAL:-1m}
+      CRON_PENDING_ORDERS_BATCH: ${CRON_PENDING_ORDERS_BATCH:-100}
+    depends_on:
+      event-service:
+        condition: service_healthy
+      inventory-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:8083/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+networks:
+  ticket-net:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:
+  kafka_data:

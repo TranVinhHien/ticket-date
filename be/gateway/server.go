@@ -170,5 +170,13 @@ func (s *Server) Run() error {
 			Str("address", addr).
 			Msg("[Gateway] Service is listening")
 	}
-	return s.engine.Run(addr)
+	srv := &http.Server{
+		Addr:              addr,
+		Handler:           s.engine,
+		ReadHeaderTimeout: 5 * time.Second,
+		ReadTimeout:       30 * time.Second,
+		WriteTimeout:      60 * time.Second,
+		IdleTimeout:       120 * time.Second,
+	}
+	return srv.ListenAndServe()
 }

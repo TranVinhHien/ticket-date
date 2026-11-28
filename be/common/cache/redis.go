@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/redis/go-redis/v9"
@@ -278,39 +279,62 @@ return { 0 }
 `)
 
 func (c *redisCache) DeductStockAtomic(ctx context.Context, items []DeductStockItem) (*DeductStockResult, error) {
+	startTotal := time.Now()
+	var dLua time.Duration
+	var keysCount int
+	timingStatus := "OK"
+	defer func() {
+		log.Printf("[DeductStockAtomic.Timing] total=%.2fms | redis_lua=%.2fms | keys=%d | status=%s",
+			float64(time.Since(startTotal).Microseconds())/1000.0,
+			float64(dLua.Microseconds())/1000.0,
+			keysCount,
+			timingStatus,
+		)
+	}()
+
 	if c.client == nil {
+		timingStatus = "ERR_NIL_CLIENT"
 		return nil, fmt.Errorf("redis client is nil")
 	}
 	if len(items) == 0 {
+		timingStatus = "OK_EMPTY"
 		return &DeductStockResult{Status: DeductStatusOK}, nil
 	}
 
-	keys := make([]string, len(items))
-	args := make([]interface{}, len(items))
+	keysCount = len(items)
+	keys := make([]string, keysCount)
+	args := make([]interface{}, keysCount)
 	for i, item := range items {
 		keys[i] = item.Key
 		args[i] = item.Quantity
 	}
 
+	tLua := time.Now()
 	rawRes, err := deductStockLua.Run(ctx, c.client, keys, args...).Result()
+	dLua = time.Since(tLua)
 	if err != nil {
+		timingStatus = "ERR_REDIS_LUA"
 		return nil, fmt.Errorf("redis lua deduct stock: %w", err)
 	}
 
 	slice, ok := rawRes.([]interface{})
 	if !ok || len(slice) == 0 {
+		timingStatus = "ERR_LUA_FORMAT"
 		return nil, fmt.Errorf("unexpected lua result format: %v", rawRes)
 	}
 
 	statusVal, ok := slice[0].(int64)
 	if !ok {
+		timingStatus = "ERR_LUA_STATUS"
 		return nil, fmt.Errorf("unexpected status code in lua result: %v", slice[0])
 	}
 
 	switch statusVal {
 	case 0:
+		timingStatus = "OK"
 		return &DeductStockResult{Status: DeductStatusOK}, nil
 	case 1:
+		timingStatus = "MISSING"
 		missing := make([]string, 0, len(slice)-1)
 		for _, v := range slice[1:] {
 			if s, ok := v.(string); ok {
@@ -322,6 +346,7 @@ func (c *redisCache) DeductStockAtomic(ctx context.Context, items []DeductStockI
 			MissingKeys: missing,
 		}, nil
 	case 2:
+		timingStatus = "INSUFFICIENT"
 		failedKey := ""
 		if len(slice) > 1 {
 			if s, ok := slice[1].(string); ok {
@@ -333,6 +358,7 @@ func (c *redisCache) DeductStockAtomic(ctx context.Context, items []DeductStockI
 			FailedKey: failedKey,
 		}, nil
 	default:
+		timingStatus = "ERR_UNKNOWN_STATUS"
 		return nil, fmt.Errorf("unknown lua status code: %d", statusVal)
 	}
 }

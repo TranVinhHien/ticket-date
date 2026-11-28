@@ -2,10 +2,12 @@ package gateway
 
 import (
 	"fmt"
+	"net"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog"
@@ -26,6 +28,19 @@ func NewReverseProxyHandler(targetURL string, logger *zerolog.Logger) (*ReverseP
 	}
 
 	proxy := httputil.NewSingleHostReverseProxy(parsedURL)
+	proxy.Transport = &http.Transport{
+		Proxy: http.ProxyFromEnvironment,
+		DialContext: (&net.Dialer{
+			Timeout:   5 * time.Second,
+			KeepAlive: 30 * time.Second,
+		}).DialContext,
+		MaxIdleConns:          2000,
+		MaxIdleConnsPerHost:   500,
+		IdleConnTimeout:       90 * time.Second,
+		TLSHandshakeTimeout:   5 * time.Second,
+		ExpectContinueTimeout: 1 * time.Second,
+		ResponseHeaderTimeout: 30 * time.Second,
+	}
 
 	originalDirector := proxy.Director
 	proxy.Director = func(req *http.Request) {

@@ -1,0 +1,36 @@
+# Build context: ./be (docker build -f be/inventory-service/Dockerfile ./be)
+FROM golang:1.26-alpine AS builder
+
+WORKDIR /src
+
+COPY common/go.mod common/go.sum ./common/
+COPY inventory-service/go.mod inventory-service/go.sum ./inventory-service/
+
+WORKDIR /src/inventory-service
+RUN go mod download
+
+WORKDIR /src
+COPY common/ ./common/
+COPY inventory-service/ ./inventory-service/
+
+WORKDIR /src/inventory-service
+RUN CGO_ENABLED=0 GOOS=linux go build -tags=nomsgpack -trimpath -ldflags="-s -w" -o /out/server ./server
+
+FROM alpine:3.22
+
+RUN apk add --no-cache ca-certificates tzdata wget \
+    && addgroup -S app \
+    && adduser -S -G app app
+
+WORKDIR /app
+
+COPY --from=builder /out/server ./server
+
+USER app
+
+EXPOSE 8082 50052
+
+HEALTHCHECK --interval=15s --timeout=5s --start-period=10s --retries=3 \
+    CMD wget --no-verbose --tries=1 --spider http://127.0.0.1:8082/health || exit 1
+
+ENTRYPOINT ["./server"]

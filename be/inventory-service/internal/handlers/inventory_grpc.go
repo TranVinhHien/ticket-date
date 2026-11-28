@@ -26,8 +26,6 @@ func (h *InventoryGRPCHandler) DeductStock(ctx context.Context, req *pbInventory
 	if req != nil {
 		rawItems = req.Items
 	}
-	log.Printf("[InventoryGRPCHandler.DeductStock] Incoming gRPC deduct request: %d items", len(rawItems))
-
 	items, err := parseStockItems(rawItems, func(i *pbInventory.DeductItem) (string, int32, bool) {
 		if i == nil {
 			return "", 0, false
@@ -40,11 +38,9 @@ func (h *InventoryGRPCHandler) DeductStock(ctx context.Context, req *pbInventory
 	}
 
 	if err := h.service.DeductStock(ctx, dto.DeductStockRequest{Items: items}); err != nil {
-		log.Printf("[InventoryGRPCHandler.DeductStock] Service error deducting stock: %v", err)
 		return nil, err
 	}
 
-	log.Printf("[InventoryGRPCHandler.DeductStock] Successfully deducted stock for %d items", len(items))
 	return &pbInventory.DeductStockResponse{
 		Success: true,
 	}, nil

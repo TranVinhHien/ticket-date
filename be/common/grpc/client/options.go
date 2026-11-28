@@ -11,8 +11,8 @@ import (
 // Default connection parameters
 const (
 	DefaultConnectTimeout   = 5 * time.Second
-	DefaultKeepAliveTime    = 30 * time.Second
-	DefaultKeepAliveTimeout = 5 * time.Second
+	DefaultKeepAliveTime    = 60 * time.Second
+	DefaultKeepAliveTimeout = 20 * time.Second
 )
 
 // ClientOptions configures the gRPC client connection.

@@ -85,15 +85,18 @@ func main() {
 		log.Printf("Warning: failed to listen on gRPC port %d: %v", config.App.HttpServer.GRPCPort, err)
 	} else {
 		grpcServer := grpc.NewServer(
+			grpc.MaxConcurrentStreams(2048),
+			grpc.InitialWindowSize(1<<20),
+			grpc.InitialConnWindowSize(1<<21),
 			grpc.KeepaliveEnforcementPolicy(keepalive.EnforcementPolicy{
-				MinTime:             5 * time.Second,
+				MinTime:             10 * time.Second,
 				PermitWithoutStream: true,
 			}),
 			grpc.KeepaliveParams(keepalive.ServerParameters{
-				MaxConnectionIdle:     15 * time.Minute,
-				MaxConnectionAge:      30 * time.Minute,
+				MaxConnectionIdle:     30 * time.Minute,
+				MaxConnectionAge:      2 * time.Hour,
 				MaxConnectionAgeGrace: 5 * time.Minute,
-				Time:                  1 * time.Minute,
+				Time:                  2 * time.Minute,
 				Timeout:               20 * time.Second,
 			}),
 			grpc.ChainUnaryInterceptor(interceptor.DefaultServerUnaryInterceptors(nil)...),

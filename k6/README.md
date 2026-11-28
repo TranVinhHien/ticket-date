@@ -295,4 +295,4 @@ k6 run k6/ticket-booking.test.js: Chạy script load test kịch bản đặt v�
   
 --env THINK_TIME=0.5: Thời gian nghỉ (tính bằng giây, ở đây là 0.5s) mô phỏng khoảng dừng thao tác của người dùng thật giữa các bước gọi API (sleep(THINK_TIME)). Mặc định là 1 giây.
 
-  k6 run k6/ticket-booking.test.js --env TEST_DATA_FILE=setup/test-data.json --env VUS=1000 --env RAMP_UP=60s --env DURATION=90s --env THINK_TIME=0.5
+  k6 run k6/ticket-booking.test.js --env TEST_DATA_FILE=setup/test-data.json --env VUS=1000 --env RAMP_UP=5s --env DURATION=90s --env THINK_TIME=0.5
