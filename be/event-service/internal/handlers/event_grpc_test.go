@@ -63,7 +63,7 @@ func TestEventGRPCHandler_GetTicketTypes_Success(t *testing.T) {
 		},
 	}
 
-	eventSvc := services.NewEventService(repo, nil, nil)
+	eventSvc := services.NewEventService(repo, nil, nil, nil, 0, 0)
 	h := handlers.NewEventGRPCHandler(eventSvc)
 
 	resp, err := h.GetTicketTypes(context.Background(), &pbEvent.GetTicketTypesRequest{
@@ -82,7 +82,7 @@ func TestEventGRPCHandler_GetTicketTypes_Success(t *testing.T) {
 }
 
 func TestEventGRPCHandler_GetTicketTypes_ValidationErrors(t *testing.T) {
-	eventSvc := services.NewEventService(&mockEventRepo{}, nil, nil)
+	eventSvc := services.NewEventService(&mockEventRepo{}, nil, nil, nil, 0, 0)
 	h := handlers.NewEventGRPCHandler(eventSvc)
 	ctx := context.Background()
 

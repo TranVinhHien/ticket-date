@@ -2,12 +2,13 @@ package cache_test
 
 import (
 	"context"
+	"errors"
 	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
 
-	"github.com/TranVinhHien/ticket-date/be/inventory-service/internal/cache"
+	"github.com/TranVinhHien/ticket-date/be/common/cache"
 )
 
 func TestGetIntWithLock_CacheStampedePrevention(t *testing.T) {
@@ -133,5 +134,43 @@ func TestRememberWithLock_GenericType(t *testing.T) {
 
 	if atomic.LoadInt32(&dbQueryCount) != 1 {
 		t.Fatalf("expected DB fetch for generic object to be called exactly 1 time, got %d", dbQueryCount)
+	}
+}
+
+func TestRememberWithLock_MaxRetriesExhausted(t *testing.T) {
+	c := cache.NewMemoryCache(10*time.Minute, 1*time.Minute)
+	ctx := context.Background()
+
+	cacheKey := "test:event:locked:789"
+	lockKey := cache.ProLockKeyItem("event_789")
+
+	// Simulate another node holding the lock
+	acquired, err := c.AcquireLock(ctx, lockKey, 2*time.Second)
+	if err != nil || !acquired {
+		t.Fatalf("expected initial lock acquisition to succeed, err=%v", err)
+	}
+
+	var dbQueryCount int32
+	_, err = cache.RememberWithLock(
+		ctx,
+		c,
+		cacheKey,
+		lockKey,
+		5*time.Minute,
+		func(ctx context.Context) (eventDetails, error) {
+			atomic.AddInt32(&dbQueryCount, 1)
+			return eventDetails{}, nil
+		},
+		cache.LockOptions{
+			LockTTL:      2 * time.Second,
+			MaxRetries:   2,
+			RetryBackoff: 5 * time.Millisecond,
+		},
+	)
+	if !errors.Is(err, cache.ErrPleaseTryAgain) {
+		t.Fatalf("expected ErrPleaseTryAgain when retries exhausted, got %v", err)
+	}
+	if atomic.LoadInt32(&dbQueryCount) != 0 {
+		t.Fatalf("expected DB fetch not to be called when retries exhausted, got %d", dbQueryCount)
 	}
 }

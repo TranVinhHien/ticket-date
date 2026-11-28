@@ -180,7 +180,7 @@ func TestEventService_CRUD_With_TicketTypes(t *testing.T) {
 	eventRepo := newFakeEventRepo()
 	orgRepo := newFakeOrganizerRepo()
 	venueRepo := newFakeVenueRepo()
-	svc := NewEventService(eventRepo, orgRepo, venueRepo)
+	svc := NewEventService(eventRepo, orgRepo, venueRepo, nil, 0, 0)
 	ctx := context.Background()
 
 	adminID := uuid.New()
@@ -382,7 +382,7 @@ func TestEventService_CRUD_With_TicketTypes(t *testing.T) {
 
 func TestEventService_GetTicketTypesByIDs(t *testing.T) {
 	eventRepo := newFakeEventRepo()
-	svc := NewEventService(eventRepo, newFakeOrganizerRepo(), newFakeVenueRepo())
+	svc := NewEventService(eventRepo, newFakeOrganizerRepo(), newFakeVenueRepo(), nil, 0, 0)
 	ctx := context.Background()
 
 	tt1ID := uuid.New()

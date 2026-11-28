@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/TranVinhHien/ticket-date/be/inventory-service/internal/cache"
+	"github.com/TranVinhHien/ticket-date/be/common/cache"
 )
 
 type sampleData struct {
@@ -55,6 +55,17 @@ func TestMemoryCache_BasicOperations(t *testing.T) {
 	err = c.Get(ctx, "ticket:123", &out)
 	if err != cache.ErrCacheMiss {
 		t.Fatalf("expected ErrCacheMiss after Delete, got %v", err)
+	}
+
+	// 5. MGet
+	_ = c.Set(ctx, "mget:1", sampleData{ID: "1", Name: "A", Qty: 10}, 5*time.Minute)
+	_ = c.Set(ctx, "mget:2", sampleData{ID: "2", Name: "B", Qty: 20}, 5*time.Minute)
+	mgetRes, err := c.MGet(ctx, []string{"mget:1", "mget:2", "mget:missing"})
+	if err != nil {
+		t.Fatalf("unexpected error on MGet: %v", err)
+	}
+	if len(mgetRes) != 2 {
+		t.Fatalf("expected 2 MGet hits, got %d", len(mgetRes))
 	}
 }
 

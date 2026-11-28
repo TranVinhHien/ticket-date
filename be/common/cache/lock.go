@@ -2,9 +2,13 @@ package cache
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 )
+
+// ErrPleaseTryAgain is returned when distributed lock acquisition fails or max retries are exhausted.
+var ErrPleaseTryAgain = errors.New("please try again")
 
 // ProLockKeyItemPrefix is the standard lock prefix requested for ticket item mutex locking.
 const ProLockKeyItemPrefix = "PRO_LOCK_KEY_ITEM:"
@@ -79,7 +83,7 @@ func GetIntWithLock(
 		acquired, err := c.AcquireLock(ctx, lockKey, opt.LockTTL)
 		if err != nil {
 			// If lock fails return try again
-			return -1, fmt.Errorf("please try again")
+			return -1, ErrPleaseTryAgain
 		}
 
 		if acquired {
@@ -116,8 +120,8 @@ func GetIntWithLock(
 		}
 	}
 
-	// Max retries exhausted: Fallback to DB
-	return -1, fmt.Errorf("please try again")
+	// Max retries exhausted: do not stampede DB
+	return -1, ErrPleaseTryAgain
 
 }
 
@@ -149,7 +153,7 @@ func RememberWithLock[T any](
 		// 2. Cache Miss: Attempt to acquire mutex lock
 		acquired, err := c.AcquireLock(ctx, lockKey, opt.LockTTL)
 		if err != nil {
-			return fetchFn(ctx)
+			return zero, ErrPleaseTryAgain
 		}
 
 		if acquired {
@@ -184,5 +188,6 @@ func RememberWithLock[T any](
 		}
 	}
 
-	return fetchFn(ctx)
+	// Max retries exhausted: do not stampede DB
+	return zero, ErrPleaseTryAgain
 }

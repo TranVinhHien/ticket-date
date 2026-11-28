@@ -2,19 +2,17 @@ module github.com/TranVinhHien/ticket-date/be/event-service
 
 go 1.26.10
 
-replace github.com/TranVinhHien/ticket-date/be/common => ../common
-
 require (
 	github.com/TranVinhHien/ticket-date/be/common v0.0.0-20261113061828-7b1f12501263
 	github.com/gin-gonic/gin v1.12.0
 	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/google/uuid v1.6.0
 	github.com/pressly/goose/v3 v3.30.1
+	github.com/redis/go-redis/v9 v9.23.0
 	github.com/rs/zerolog v1.35.1
 	github.com/spf13/viper v1.21.0
 	github.com/testcontainers/testcontainers-go v0.45.0
 	github.com/testcontainers/testcontainers-go/modules/postgres v0.45.0
-	google.golang.org/grpc v1.85.0
 	google.golang.org/grpc v1.85.0
 	gorm.io/driver/postgres v1.6.3
 	gorm.io/gorm v1.31.2
@@ -106,6 +104,7 @@ require (
 	go.opentelemetry.io/otel/log v1.47.0 // indirect
 	go.opentelemetry.io/otel/metric v1.47.0 // indirect
 	go.opentelemetry.io/otel/trace v1.47.0 // indirect
+	go.uber.org/atomic v1.12.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.yaml.in/yaml/v3 v3.0.6 // indirect
 	golang.org/x/arch v0.29.0 // indirect

@@ -289,7 +289,7 @@ export default function () {
 
     const r = parseResponse(res, "Get Stock VIP");
     const stockOk = check(res, {
-      "[5] Stock VIP - HTTP 200":  (r) => r.status === 200,
+      "[5] Stock VIP - HTTP 200": (r) => r.status === 200,
       "[5] Stock VIP - has items": () => r.data !== null && r.data !== undefined,
     });
 
@@ -344,22 +344,22 @@ export default function () {
   if (THINK_TIME > 0) sleep(THINK_TIME * 0.5);
 
   // ── [7] Get Profile ──────────────────────────────────────────────────────
-  group("07_get_profile", function () {
-    const res = http.get(
-      `${BASE_URL}/api/v1/users/me`,
-      {
-        headers: { Authorization: `Bearer ${token}` },
-        tags: { step: "get_profile" },
-      }
-    );
-    getProfileDuration.add(res.timings.duration);
+  // group("07_get_profile", function () {
+  //   const res = http.get(
+  //     `${BASE_URL}/api/v1/users/me`,
+  //     {
+  //       headers: { Authorization: `Bearer ${token}` },
+  //       tags: { step: "get_profile" },
+  //     }
+  //   );
+  //   getProfileDuration.add(res.timings.duration);
 
-    const r = parseResponse(res, "Get Profile");
-    check(res, {
-      "[7] Get Profile - HTTP 200":    (r) => r.status === 200,
-      "[7] Get Profile - has user_id": () => !!r.data?.id,
-    });
-  });
+  //   const r = parseResponse(res, "Get Profile");
+  //   check(res, {
+  //     "[7] Get Profile - HTTP 200":    (r) => r.status === 200,
+  //     "[7] Get Profile - has user_id": () => !!r.data?.id,
+  //   });
+  // });
 
   if (THINK_TIME > 0) sleep(THINK_TIME * 0.5);
 
@@ -386,7 +386,7 @@ export default function () {
 
     const r = parseResponse(res, "Create Order GA");
     const orderGaCreated = check(res, {
-      "[8] Create Order GA - HTTP 2xx":    (r) => r.status >= 200 && r.status < 300,
+      "[8] Create Order GA - HTTP 2xx": (r) => r.status >= 200 && r.status < 300,
       "[8] Create Order GA - has order_id": () => !!r.data?.id,
     });
 
@@ -423,35 +423,35 @@ export function handleSummary(data) {
   }
 
   // ── Đọc metrics theo đúng cấu trúc k6 data ────────────────────────────
-  const totalIter    = v("iterations")?.count                ?? 0;
-  const totalReqs    = v("http_reqs")?.count                 ?? 0;
-  const throughput   = v("http_reqs")?.rate                  ?? 0;
-  const reqDurAvg    = v("http_req_duration")?.avg            ?? 0;
-  const reqDurMed    = v("http_req_duration")?.med            ?? 0;
-  const reqDurMin    = v("http_req_duration")?.min            ?? 0;
-  const reqDurMax    = v("http_req_duration")?.max            ?? 0;
-  const reqDurP95    = v("http_req_duration")?.["p(95)"]      ?? 0;
-  const reqDurP99    = v("http_req_duration")?.["p(99)"]      ?? 0;
+  const totalIter = v("iterations")?.count ?? 0;
+  const totalReqs = v("http_reqs")?.count ?? 0;
+  const throughput = v("http_reqs")?.rate ?? 0;
+  const reqDurAvg = v("http_req_duration")?.avg ?? 0;
+  const reqDurMed = v("http_req_duration")?.med ?? 0;
+  const reqDurMin = v("http_req_duration")?.min ?? 0;
+  const reqDurMax = v("http_req_duration")?.max ?? 0;
+  const reqDurP95 = v("http_req_duration")?.["p(95)"] ?? 0;
+  const reqDurP99 = v("http_req_duration")?.["p(99)"] ?? 0;
 
-  const ordersOk     = v("orders_created_total")?.count      ?? 0;
-  const ordersFail   = v("orders_failed_total")?.count       ?? 0;
-  const bizErrors    = v("business_errors_total")?.count     ?? 0;
-  const httpErrors   = v("api_errors_total")?.count          ?? 0;
-  const invFail      = v("inventory_check_failures")?.count  ?? 0;
-  const errRate      = v("error_rate")?.rate                 ?? 0;
-  const orderSucRate = v("order_success_rate")?.rate         ?? 0;
+  const ordersOk = v("orders_created_total")?.count ?? 0;
+  const ordersFail = v("orders_failed_total")?.count ?? 0;
+  const bizErrors = v("business_errors_total")?.count ?? 0;
+  const httpErrors = v("api_errors_total")?.count ?? 0;
+  const invFail = v("inventory_check_failures")?.count ?? 0;
+  const errRate = v("error_rate")?.rate ?? 0;
+  const orderSucRate = v("order_success_rate")?.rate ?? 0;
 
-  const listP95      = v("step_list_events_ms")?.["p(95)"]   ?? 0;
-  const listAvg      = v("step_list_events_ms")?.avg         ?? 0;
-  const slugP95      = v("step_get_by_slug_ms")?.["p(95)"]   ?? 0;
-  const idP95        = v("step_get_by_id_ms")?.["p(95)"]     ?? 0;
-  const stockQP95    = v("step_stock_query_ms")?.["p(95)"]   ?? 0;
-  const stockBP95    = v("step_stock_body_ms")?.["p(95)"]    ?? 0;
-  const orderP95     = v("step_create_order_ms")?.["p(95)"]  ?? 0;
-  const orderAvg     = v("step_create_order_ms")?.avg        ?? 0;
-  const profileP95   = v("step_get_profile_ms")?.["p(95)"]   ?? 0;
+  const listP95 = v("step_list_events_ms")?.["p(95)"] ?? 0;
+  const listAvg = v("step_list_events_ms")?.avg ?? 0;
+  const slugP95 = v("step_get_by_slug_ms")?.["p(95)"] ?? 0;
+  const idP95 = v("step_get_by_id_ms")?.["p(95)"] ?? 0;
+  const stockQP95 = v("step_stock_query_ms")?.["p(95)"] ?? 0;
+  const stockBP95 = v("step_stock_body_ms")?.["p(95)"] ?? 0;
+  const orderP95 = v("step_create_order_ms")?.["p(95)"] ?? 0;
+  const orderAvg = v("step_create_order_ms")?.avg ?? 0;
+  const profileP95 = v("step_get_profile_ms")?.["p(95)"] ?? 0;
 
-  const totalOrders  = ordersOk + ordersFail;
+  const totalOrders = ordersOk + ordersFail;
 
   const p = (s) => s.padEnd(44);
 
@@ -470,24 +470,24 @@ export function handleSummary(data) {
 ║    Reqs/sec    : ${p(fmt(throughput, " rps"))}║
 ╠════════════════════════════════════════════════════════════════╣
 ║  Response Time (toàn bộ HTTP requests)                        ║
-║    Min / Avg / Med : ${p(fmt(reqDurMin," ms")+" / "+fmt(reqDurAvg," ms")+" / "+fmt(reqDurMed," ms"))}║
+║    Min / Avg / Med : ${p(fmt(reqDurMin, " ms") + " / " + fmt(reqDurAvg, " ms") + " / " + fmt(reqDurMed, " ms"))}║
 ║    P95         : ${p(fmt(reqDurP95, " ms"))}║
 ║    P99         : ${p(fmt(reqDurP99, " ms"))}║
 ║    Max         : ${p(fmt(reqDurMax, " ms"))}║
 ╠════════════════════════════════════════════════════════════════╣
 ║  Response Time từng bước (P95)                                ║
-║    [1] List Events   : ${p(fmt(listP95," ms")+" avg:"+fmt(listAvg," ms"))}║
+║    [1] List Events   : ${p(fmt(listP95, " ms") + " avg:" + fmt(listAvg, " ms"))}║
 ║    [2] Get by Slug   : ${p(fmt(slugP95, " ms"))}║
 ║    [3] Get by ID     : ${p(fmt(idP95, " ms"))}║
 ║    [4] Stock Query   : ${p(fmt(stockQP95, " ms"))}║
 ║    [5,7,9] Stock Body: ${p(fmt(stockBP95, " ms"))}║
-║    [6,10] Create Order: ${p(fmt(orderP95," ms")+" avg:"+fmt(orderAvg," ms"))}║
+║    [6,10] Create Order: ${p(fmt(orderP95, " ms") + " avg:" + fmt(orderAvg, " ms"))}║
 ║    [8] Get Profile   : ${p(fmt(profileP95, " ms"))}║
 ╠════════════════════════════════════════════════════════════════╣
 ║  Lỗi                                                           ║
 ║    Error Rate  : ${p(fmt(errRate * 100, " %"))}║
 ║    HTTP Errors : ${p(String(httpErrors))}║
-║    Biz Errors  : ${p(String(bizErrors)+" (HTTP 2xx nhưng business fail)")}║
+║    Biz Errors  : ${p(String(bizErrors) + " (HTTP 2xx nhưng business fail)")}║
 ║    Inv Fail    : ${p(String(invFail))}║
 ╠════════════════════════════════════════════════════════════════╣
 ║  Đặt Vé (Orders)                                              ║
@@ -506,6 +506,6 @@ export function handleSummary(data) {
   return {
     stdout: summary + "\n" + textSummary(data, { indent: "  ", enableColors: true }),
     [`${REPORT_DIR}/summary-${ts}.json`]: JSON.stringify(data, null, 2),
-    [`${REPORT_DIR}/report-${ts}.html`]:  htmlReport(data, { title: `Ticket Booking Load Test – ${ts}` }),
+    [`${REPORT_DIR}/report-${ts}.html`]: htmlReport(data, { title: `Ticket Booking Load Test – ${ts}` }),
   };
 }
